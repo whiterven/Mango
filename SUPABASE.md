@@ -161,11 +161,12 @@ create policy "Users can crud own schedules" on public.scheduled_ads
 ```
 
 ### 2.7 Credits & Billing
-Manages user quota.
+Manages user quota and Stripe link.
 
 ```sql
 create table public.user_credits (
   user_id uuid references public.profiles(id) on delete cascade primary key,
+  stripe_customer_id text, -- Links to Stripe Customer
   total_credits int default 50,
   used_credits int default 0,
   plan_tier text default 'starter', -- 'starter', 'pro', 'agency'
@@ -285,3 +286,7 @@ using (bucket_id in ('campaign-assets', 'brand-assets', 'competitor-assets'));
         VITE_SUPABASE_ANON_KEY=your_anon_key
         ```
 4.  **Auth**: Ensure Email provider is enabled in **Authentication > Providers**.
+5.  **Stripe**:
+    *   Get your `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `VITE_STRIPE_PUBLISHABLE_KEY`.
+    *   Deploy the Edge Functions found in `supabase/functions/`.
+    *   Set Stripe secrets in Supabase via CLI: `supabase secrets set STRIPE_SECRET_KEY=...`

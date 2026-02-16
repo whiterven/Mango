@@ -4,15 +4,30 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { creditService, CreditState } from '../services/creditService';
+import { billingService } from '../services/db/billingService';
+import { useAuth } from '../hooks/useAuth';
+import { subscription } from '../lib/subscription';
 
 export const Billing: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
-  const [credits, setCredits] = useState<CreditState>({ total: 0, used: 0, history: [] });
+  const { user } = useAuth();
+  const [credits, setCredits] = useState<CreditState>({ total: 0, used: 0, plan: 'starter', history: [] });
 
   useEffect(() => {
-    setCredits(creditService.getState());
-  }, []);
+    if (user) {
+        creditService.getState(user.id).then(setCredits);
+    }
+  }, [user]);
 
   const percentage = Math.min((credits.used / credits.total) * 100, 100);
+  const planDetails = subscription.getPlanDetails(credits.plan);
+
+  const handleUpgrade = (plan: 'pro' | 'agency') => {
+      billingService.startSubscription(plan === 'agency' ? 'price_agency_monthly' : 'price_pro_monthly');
+  };
+
+  const handlePortal = () => {
+      billingService.openBillingPortal();
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -27,19 +42,23 @@ export const Billing: React.FC<{ onNavigate: (view: string) => void }> = ({ onNa
               <p className="text-slate-500 text-sm">Manage your subscription and usage limits.</p>
            </div>
         </div>
-        <Button>Upgrade Plan</Button>
+        {credits.plan !== 'agency' && (
+            <Button onClick={() => handleUpgrade('pro')}>Upgrade Plan</Button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
          {/* Usage Card */}
          <div className="md:col-span-2 space-y-6">
-             <Card title="Credit Usage" className="border-brand-500/30 bg-slate-900/80">
+             <Card title="Current Plan Usage" className="border-brand-500/30 bg-slate-900/80">
                  <div className="flex justify-between items-end mb-4">
                      <div>
                          <div className="text-3xl font-black text-white mb-1">
                              {credits.total - credits.used} <span className="text-sm font-normal text-slate-500">available</span>
                          </div>
-                         <p className="text-xs text-slate-400">Resets on Feb 14, 2026</p>
+                         <p className="text-xs text-slate-400">
+                             Plan: <span className="text-white font-bold capitalize">{planDetails?.name}</span> • Resets monthly
+                         </p>
                      </div>
                      <div className="text-right">
                          <Badge color={percentage > 90 ? 'red' : 'green'}>{percentage.toFixed(0)}% Used</Badge>
@@ -77,37 +96,33 @@ export const Billing: React.FC<{ onNavigate: (view: string) => void }> = ({ onNa
              <Card title="Payment Method">
                  <div className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg">
                      <div className="flex items-center gap-3">
-                         <div className="w-10 h-6 bg-slate-700 rounded flex items-center justify-center text-[10px] font-bold text-white">VISA</div>
+                         <div className="w-10 h-6 bg-slate-700 rounded flex items-center justify-center text-[10px] font-bold text-white">STRIPE</div>
                          <div>
-                             <p className="text-sm text-white font-mono">•••• 4242</p>
-                             <p className="text-[10px] text-slate-500">Expires 12/28</p>
+                             <p className="text-sm text-white font-mono">Managed via Stripe</p>
+                             <p className="text-[10px] text-slate-500">Secure Processing</p>
                          </div>
                      </div>
-                     <Button variant="outline" size="sm">Update</Button>
+                     <Button variant="outline" size="sm" onClick={handlePortal}>Update in Portal</Button>
                  </div>
              </Card>
          </div>
 
          {/* Sidebar Actions */}
          <div className="space-y-6">
-             <div className="bg-gradient-to-br from-brand-600 to-red-500 p-6 rounded-2xl text-white shadow-lg">
-                 <h3 className="font-bold mb-2">Go Unlimited</h3>
-                 <p className="text-xs text-white/80 mb-4 leading-relaxed">
-                     Agency plans include unlimited generations and team seats.
-                 </p>
-                 <Button className="w-full bg-white text-brand-600 hover:bg-slate-100 border-none">View Agency Plans</Button>
-             </div>
+             {credits.plan !== 'agency' && (
+                 <div className="bg-gradient-to-br from-brand-600 to-red-500 p-6 rounded-2xl text-white shadow-lg">
+                     <h3 className="font-bold mb-2">Go Unlimited</h3>
+                     <p className="text-xs text-white/80 mb-4 leading-relaxed">
+                         Agency plans include 10,000 credits and team seats.
+                     </p>
+                     <Button className="w-full bg-white text-brand-600 hover:bg-slate-100 border-none" onClick={() => handleUpgrade('agency')}>View Agency Plans</Button>
+                 </div>
+             )}
 
              <Card title="Invoices">
                  <div className="space-y-2">
-                     <div className="flex justify-between text-xs p-2 hover:bg-slate-800 rounded cursor-pointer">
-                         <span className="text-white">Jan 2026</span>
-                         <span className="text-brand-400">PDF</span>
-                     </div>
-                     <div className="flex justify-between text-xs p-2 hover:bg-slate-800 rounded cursor-pointer">
-                         <span className="text-white">Dec 2025</span>
-                         <span className="text-brand-400">PDF</span>
-                     </div>
+                     <p className="text-xs text-slate-500 mb-2">View past invoices in the Stripe Customer Portal.</p>
+                     <Button variant="secondary" size="sm" className="w-full" onClick={handlePortal}>Open Customer Portal</Button>
                  </div>
              </Card>
          </div>

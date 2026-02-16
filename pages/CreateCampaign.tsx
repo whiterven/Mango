@@ -17,9 +17,12 @@ import { Campaign, CampaignStatus, PlannerOutput, DirectorOutput, AspectRatio, B
 import { Skeleton } from '../components/ui/Skeleton';
 import { SuccessConfetti } from '../components/SuccessConfetti';
 import { useToast } from '../store/ToastContext';
+import { useAuth } from '../hooks/useAuth';
+import { creditService } from '../services/creditService';
 
 export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const { addCampaign, brands, competitors } = useCampaignStore();
+  const { user } = useAuth();
   const toast = useToast();
   
   // Wizard State
@@ -67,6 +70,9 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
 
   const addLog = (msg: string) => setLogs(prev => [...prev, msg]);
 
+  // ... (Keep existing handlers for competitor, scrape, planner, director) ...
+  // [OMITTED FOR BREVITY - SAME AS ORIGINAL]
+  
   // Handle Competitor Selection
   const handleCompetitorSelect = (id: string) => {
       setSelectedCompetitorId(id);
@@ -139,10 +145,6 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
           addLog(`🧬 Loading Brand DNA for ${activeBrand.name}...`);
       }
 
-      if (competitorAnalysis) {
-          addLog(`⚔️ Integrating counter-strategy against competitor weakness...`);
-      }
-
       const res = await plannerAgent(
         formData.productName, 
         formData.description, 
@@ -167,7 +169,6 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
     setLoading(true);
     setStep(3); 
     addLog(`🎬 Designing ${formData.variationCount} unique visual concepts...`);
-    addLog(`⚙️ Applying styles: ${creativeControls.mood} mood, ${creativeControls.minimalism}% minimalism.`);
     try {
       const res = await directorAgent(
         plannerResult, 
@@ -188,7 +189,18 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
   };
 
   const handleGenerateImages = async () => {
-    if (!directorResult || !plannerResult) return;
+    if (!directorResult || !plannerResult || !user) return;
+    
+    // Credit Check
+    const cost = formData.variationCount * 1; // 1 credit per image
+    const hasCredits = await creditService.hasCredits(user.id, cost);
+    
+    if (!hasCredits) {
+        toast.error(`Not enough credits! This campaign requires ${cost} credits.`);
+        // In a real app, open upgrade modal here
+        return;
+    }
+
     setLoading(true);
     addLog("🚀 Starting production engine...");
     
@@ -228,6 +240,14 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
         })();
 
         const [adCopy, generatedImages] = await Promise.all([copyPromise, imagePromise]);
+
+        // Deduct Credits
+        const success = await creditService.deduct(user.id, generatedImages.length, `Campaign: ${formData.productName}`);
+        if (success) {
+            addLog(`💳 Deducted ${generatedImages.length} credits.`);
+        } else {
+            addLog(`⚠️ Credit sync warning.`);
+        }
 
         const newCampaign: Campaign = {
             id: crypto.randomUUID(),
@@ -583,11 +603,14 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
                   )}
               </div>
 
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                   <Button variant="outline" onClick={() => setStep(2)} size="sm">Back</Button>
-                  <Button onClick={handleGenerateImages} isLoading={loading} size="md">
-                    Run Production ({directorResult.generationPrompts.length} Images)
-                  </Button>
+                  <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase">Cost: {formData.variationCount} Credits</span>
+                      <Button onClick={handleGenerateImages} isLoading={loading} size="md">
+                        Run Production
+                      </Button>
+                  </div>
               </div>
             </>
           ) : null}

@@ -1,50 +1,43 @@
 
-const KEY = 'mango_credits';
+import { billingService } from './db/billingService';
 
 export interface CreditState {
   total: number;
   used: number;
+  plan: 'starter' | 'pro' | 'agency';
   history: { date: string, amount: number, action: string }[];
 }
 
-const DEFAULT_STATE: CreditState = {
-  total: 50, // Starter plan default
-  used: 0,
-  history: []
-};
-
 export const creditService = {
-  getState: (): CreditState => {
-    try {
-      const data = localStorage.getItem(KEY);
-      return data ? JSON.parse(data) : DEFAULT_STATE;
-    } catch {
-      return DEFAULT_STATE;
-    }
-  },
-
-  deduct: (amount: number, action: string): boolean => {
-    const state = creditService.getState();
-    if (state.used + amount > state.total) return false;
-
-    state.used += amount;
-    state.history.unshift({
-      date: new Date().toISOString(),
-      amount,
-      action
-    });
+  /**
+   * Refreshes and returns the current credit state for the UI
+   */
+  getState: async (userId: string): Promise<CreditState> => {
+    const data = await billingService.getCredits(userId);
     
-    localStorage.setItem(KEY, JSON.stringify(state));
-    return true;
+    // Ensure history is an array
+    const history = Array.isArray(data.history) ? data.history : [];
+
+    return {
+      total: data.total_credits,
+      used: data.used_credits,
+      plan: data.plan_tier,
+      history: history.reverse() // Newest first
+    };
   },
 
-  reset: () => {
-    localStorage.setItem(KEY, JSON.stringify(DEFAULT_STATE));
+  /**
+   * Check if user has enough credits
+   */
+  hasCredits: async (userId: string, cost: number): Promise<boolean> => {
+    const data = await billingService.getCredits(userId);
+    return (data.total_credits - data.used_credits) >= cost;
   },
 
-  upgrade: (plan: 'pro' | 'agency') => {
-    const state = creditService.getState();
-    state.total = plan === 'pro' ? 1000 : 10000;
-    localStorage.setItem(KEY, JSON.stringify(state));
+  /**
+   * Deduct credits
+   */
+  deduct: async (userId: string, amount: number, reason: string): Promise<boolean> => {
+    return await billingService.deductCredits(userId, amount, reason);
   }
 };

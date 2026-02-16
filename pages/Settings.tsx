@@ -5,14 +5,21 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { isSupabaseConnected, testSupabaseConnection } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { creditService, CreditState } from '../services/creditService';
+import { subscription } from '../lib/subscription';
+import { userService } from '../services/db/userService';
 
 export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
+  const { user } = useAuth();
+  
   const [profile, setProfile] = useState({
-    name: 'Marketing Team',
-    email: 'team@company.com',
-    company: 'Acme Corp'
+    name: '',
+    email: '',
+    company: ''
   });
 
+  const [credits, setCredits] = useState<CreditState | null>(null);
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'offline'>('checking');
   const [notifications, setNotifications] = useState({
     email: true,
@@ -22,7 +29,20 @@ export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onN
 
   useEffect(() => {
     checkConnection();
-  }, []);
+    if (user) {
+        // Load Profile
+        userService.getProfile(user.id).then(p => {
+            setProfile({
+                name: p?.full_name || user.user_metadata?.full_name || '',
+                email: p?.email || user.email || '',
+                company: p?.company_name || user.user_metadata?.company_name || ''
+            });
+        });
+
+        // Load Credits/Plan
+        creditService.getState(user.id).then(setCredits);
+    }
+  }, [user]);
 
   const checkConnection = async () => {
     setDbStatus('checking');
@@ -34,12 +54,24 @@ export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onN
     setDbStatus(isLive ? 'connected' : 'offline');
   };
 
+  const handleSaveProfile = async () => {
+      if (!user) return;
+      await userService.updateProfile(user.id, {
+          full_name: profile.name,
+          company_name: profile.company
+      });
+      alert("Profile updated!");
+  };
+
   const handleClearData = () => {
     if (confirm("Are you sure? This will delete all local campaigns and brands. This cannot be undone.")) {
       localStorage.clear();
       window.location.reload();
     }
   };
+
+  const planDetails = credits ? subscription.getPlanDetails(credits.plan) : null;
+  const usagePercent = credits ? Math.min((credits.used / credits.total) * 100, 100) : 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20">
@@ -89,7 +121,8 @@ export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onN
                <Input 
                  label="Email Address" 
                  value={profile.email} 
-                 onChange={(e) => setProfile({...profile, email: e.target.value})} 
+                 disabled
+                 className="opacity-50 cursor-not-allowed"
                />
                <Input 
                  label="Company Name" 
@@ -97,7 +130,7 @@ export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onN
                  onChange={(e) => setProfile({...profile, company: e.target.value})} 
                />
                <div className="flex items-end">
-                   <Button className="w-full" variant="secondary">Save Profile Changes</Button>
+                   <Button className="w-full" variant="secondary" onClick={handleSaveProfile}>Save Profile Changes</Button>
                </div>
            </div>
        </Card>
@@ -108,12 +141,14 @@ export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onN
                <Card title="Subscription" className="h-full border-brand-500/20">
                    <div className="flex justify-between items-start mb-6">
                        <div className="flex items-center gap-3">
-                           <div className="w-12 h-12 bg-gradient-to-br from-brand-600 to-yellow-600 rounded-lg flex items-center justify-center text-xl font-black text-white shadow-lg">
-                               Pro
+                           <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-xl font-black text-white shadow-lg ${credits?.plan === 'agency' ? 'bg-gradient-to-br from-purple-600 to-blue-600' : credits?.plan === 'pro' ? 'bg-gradient-to-br from-brand-600 to-yellow-600' : 'bg-slate-700'}`}>
+                               {credits?.plan === 'agency' ? 'A' : credits?.plan === 'pro' ? 'Pro' : 'S'}
                            </div>
                            <div>
-                               <h3 className="font-bold text-white text-lg">Pro Growth Plan</h3>
-                               <p className="text-xs text-slate-400">$79.00 / month • Renews Feb 14</p>
+                               <h3 className="font-bold text-white text-lg capitalize">{planDetails?.name || 'Loading...'} Plan</h3>
+                               <p className="text-xs text-slate-400">
+                                   {credits?.plan === 'starter' ? '$29/mo' : credits?.plan === 'pro' ? '$79/mo' : '$149/mo'} • Auto-renews
+                               </p>
                            </div>
                        </div>
                        <Badge color="green">Active</Badge>
@@ -121,18 +156,22 @@ export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onN
                    
                    <div className="space-y-3 mb-6">
                        <div className="flex justify-between text-xs text-slate-300">
-                           <span>Generations</span>
-                           <span className="font-mono">1,240 / Unlimited</span>
+                           <span>Monthly Credits</span>
+                           <span className="font-mono">{credits ? `${credits.used} / ${credits.total}` : '...'}</span>
                        </div>
                        <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                           <div className="bg-brand-500 w-[20%] h-full"></div>
+                           <div className={`bg-brand-500 h-full transition-all duration-1000`} style={{ width: `${usagePercent}%` }}></div>
                        </div>
-                       <p className="text-[10px] text-slate-500">You are using 20% of your fair usage limit.</p>
+                       <p className="text-[10px] text-slate-500">
+                           {usagePercent > 90 ? 'You are running low on credits.' : 'Credit usage looks good.'}
+                       </p>
                    </div>
 
                    <div className="flex gap-3">
                        <Button onClick={() => onNavigate('billing')} className="flex-1">Manage Billing & Invoices</Button>
-                       <Button variant="outline" onClick={() => onNavigate('pricing')}>Upgrade Plan</Button>
+                       {credits?.plan !== 'agency' && (
+                           <Button variant="outline" onClick={() => onNavigate('pricing')}>Upgrade Plan</Button>
+                       )}
                    </div>
                </Card>
            </div>

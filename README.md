@@ -19,49 +19,101 @@ Built with **React 19**, **Tailwind CSS**, and powered by **Google's Gemini 3 Pr
 - **Competitor Spy**: Upload a competitor's ad to deconstruct their strategy, find weaknesses, and generate a counter-creative.
 - **Brand DNA System**: Define and store brand identities (Hex codes, fonts, tone of voice) to ensure consistent output.
 - **Performance Prediction**: An AI scoring system that predicts Attention, Clarity, and Conversion potential before you spend ad budget.
-- **Website Scraper**: Auto-fill campaign briefs by analyzing any product URL.
 - **Creative Studio**: Built-in editor to add text overlays and hooks to generated images.
 - **Batch Generator**: Agency-mode tool to generate concepts for multiple products simultaneously.
+
+### 💳 Billing & Credits System
+- **Stripe Integration**: Secure subscription management and one-time credit purchases.
+- **Credit Logic**: Usage-based metering for AI generations (Pro/Agency tiers).
+- **Invoices**: Self-serve customer portal for billing history.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 19, TypeScript
+- **Frontend**: React 19, TypeScript, Vite
 - **Styling**: Tailwind CSS (Dark mode optimized)
 - **AI Integration**: Google GenAI SDK (`@google/genai`)
+- **Backend & Auth**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **Payments**: Stripe API + Stripe Elements
 - **Visual Effects**: Three.js (Landing page light pillars)
-- **State Management**: React Context + LocalStorage persistence
-- **Icons**: Heroicons (via SVG)
 
 ---
 
-## 🤖 AI Models Used
+## 📂 Project Structure
 
-Mango leverages specific Gemini models for specialized tasks:
-
-| Feature | Model | Purpose |
-| :--- | :--- | :--- |
-| **Strategy & Logic** | `gemini-3-pro-preview` | Complex reasoning, brief generation, competitor analysis. |
-| **Image Generation** | `gemini-3-pro-image-preview` | High-fidelity ad creatives (1K resolution). |
-| **Copywriting** | `gemini-3-flash-preview` | Fast, punchy text generation for headlines and captions. |
+```
+/src
+  /agents       # AI Logic (Planner, Director, Copy, etc.)
+  /components   # UI Components (Cards, Buttons, Layouts)
+  /pages        # Application Routes
+  /services     # Data Layer (DB, Storage, Billing, AI)
+  /store        # State Management (Context API)
+  /lib          # External Clients (Supabase, Stripe)
+/supabase
+  /functions    # Serverless Edge Functions (Deno)
+    /create-checkout  # Stripe Session Creation
+    /create-portal    # Customer Portal
+    /stripe-webhook   # Event Listener
+```
 
 ---
 
-## ⚡ Supabase Database Setup
+## ⚡ Supabase & Backend Setup
 
-To make this app production-ready with a real backend, please refer to **[SUPABASE.md](./SUPABASE.md)**.
+To make this app production-ready, you must configure Supabase and Stripe.
 
-That file contains the complete SQL schema, Row Level Security (RLS) policies, and storage configuration required to deploy the backend features (Auth, Persistence, History).
+### 1. Database Schema
+Refer to **[SUPABASE.md](./SUPABASE.md)** for the complete SQL schema. Run the provided SQL in your Supabase Dashboard to create tables for Users, Campaigns, Credits, and RLS policies.
+
+### 2. Edge Functions Deployment
+The app uses Supabase Edge Functions to handle secure Stripe transactions.
+
+**Prerequisites:**
+- [Supabase CLI](https://supabase.com/docs/guides/cli) installed.
+- [Docker](https://docs.docker.com/get-docker/) running.
+
+**Steps:**
+
+1.  **Login to Supabase CLI:**
+    ```bash
+    npx supabase login
+    ```
+
+2.  **Link your project:**
+    ```bash
+    npx supabase link --project-ref your-project-id
+    ```
+
+3.  **Set Environment Secrets:**
+    You need to set your Stripe keys in the remote Supabase environment.
+    ```bash
+    npx supabase secrets set STRIPE_SECRET_KEY=sk_test_...
+    npx supabase secrets set STRIPE_WEBHOOK_SECRET=whsec_...
+    npx supabase secrets set SUPABASE_URL=https://your-project.supabase.co
+    npx supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+    ```
+
+4.  **Deploy Functions:**
+    ```bash
+    npx supabase functions deploy
+    ```
+
+### 3. Stripe Configuration
+1.  Create a product in Stripe Dashboard for "Pro Plan" and "Agency Plan".
+2.  Copy the `price_ID`s.
+3.  Update `src/services/db/billingService.ts` with your actual Stripe Price IDs.
+4.  Add your webhook endpoint (`https://<project-ref>.supabase.co/functions/v1/stripe-webhook`) to Stripe Developers Dashboard.
 
 ---
 
-## ⚡ Getting Started
+## ⚡ Getting Started (Frontend)
 
 ### Prerequisites
 - Node.js (v18+)
 - A Google Cloud Project with Gemini API access enabled.
-- An API Key with access to the `gemini-3-pro` series models.
+- A Supabase Project.
+- A Stripe Account.
 
 ### Installation
 
@@ -76,23 +128,28 @@ That file contains the complete SQL schema, Row Level Security (RLS) policies, a
     npm install
     ```
 
-3.  **Run Development Server**
+3.  **Configure Environment**
+    Rename `.env.example` to `.env` and fill in your keys:
+    ```bash
+    VITE_SUPABASE_URL=...
+    VITE_SUPABASE_ANON_KEY=...
+    VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+    API_KEY=... (Google Gemini)
+    ```
+
+4.  **Run Development Server**
     ```bash
     npm start
     ```
-
-### API Key Configuration
-The app requires a valid Google GenAI API key.
-- On first load, if running in a supported environment (like AI Studio), it may request the key automatically.
-- Otherwise, ensure your environment provides `process.env.API_KEY` or follow the in-app prompts if configured for client-side entry.
 
 ---
 
 ## 🛡️ Privacy & Data
 
-Mango processes data using Google's Gemini API.
-- Generated images and campaign data are stored locally in the browser (`localStorage`) for persistence.
-- No personal data is sent to third-party servers other than the necessary API calls to Google for generation.
+- **AI Logic**: Processed via Google's Gemini API.
+- **User Data**: Stored in your private Supabase instance (PostgreSQL).
+- **Payment Info**: Processed exclusively by Stripe; no credit card data touches your servers.
+- **Offline Mode**: If Supabase keys are missing, the app gracefully falls back to `localStorage` for demo purposes.
 
 ---
 

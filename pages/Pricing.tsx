@@ -2,8 +2,22 @@
 import React from 'react';
 import { Footer } from '../components/layout/Footer';
 import { Button } from '../components/ui/Button';
+import { useAuth } from '../hooks/useAuth';
+import { billingService } from '../services/db/billingService';
 
 export const Pricing: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
+  const { user } = useAuth();
+
+  const handleAction = (planId: string) => {
+    if (user) {
+        // Trigger Checkout
+        billingService.startSubscription(planId);
+    } else {
+        // Redirect to Signup
+        onNavigate('signup');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-300 font-sans">
       <nav className="border-b border-slate-800 bg-[#0f172a]/80 backdrop-blur sticky top-0 z-50">
@@ -13,8 +27,14 @@ export const Pricing: React.FC<{ onNavigate: (view: string) => void }> = ({ onNa
                 <span className="font-bold text-white text-lg tracking-tight font-display">Mango</span>
              </button>
              <div className="flex gap-4">
-                 <button onClick={() => onNavigate('login')} className="text-xs font-bold text-slate-400 hover:text-white transition-colors">Log In</button>
-                 <button onClick={() => onNavigate('signup')} className="text-xs bg-white text-slate-900 font-bold px-4 py-2 rounded-full hover:bg-slate-200 transition-colors">Get Access</button>
+                 {user ? (
+                     <button onClick={() => onNavigate('dashboard')} className="text-xs font-bold text-white bg-slate-800 px-4 py-2 rounded-full hover:bg-slate-700 transition-colors">Dashboard</button>
+                 ) : (
+                     <>
+                        <button onClick={() => onNavigate('login')} className="text-xs font-bold text-slate-400 hover:text-white transition-colors">Log In</button>
+                        <button onClick={() => onNavigate('signup')} className="text-xs bg-white text-slate-900 font-bold px-4 py-2 rounded-full hover:bg-slate-200 transition-colors">Get Access</button>
+                     </>
+                 )}
              </div>
         </div>
       </nav>
@@ -45,7 +65,9 @@ export const Pricing: React.FC<{ onNavigate: (view: string) => void }> = ({ onNa
                         </div>
                     ))}
                 </div>
-                <Button onClick={() => onNavigate('signup')} variant="outline" className="w-full py-3 rounded-xl border-slate-700 hover:bg-slate-800">Get Started</Button>
+                <Button onClick={() => handleAction('price_starter_monthly')} variant="outline" className="w-full py-3 rounded-xl border-slate-700 hover:bg-slate-800">
+                    {user ? 'Subscribe' : 'Get Started'}
+                </Button>
             </div>
 
             {/* Growth */}
@@ -65,7 +87,9 @@ export const Pricing: React.FC<{ onNavigate: (view: string) => void }> = ({ onNa
                         </div>
                     ))}
                 </div>
-                <Button onClick={() => onNavigate('signup')} className="w-full py-3 rounded-xl text-base shadow-brand-500/25">Start Free Trial</Button>
+                <Button onClick={() => handleAction('price_pro_monthly')} className="w-full py-3 rounded-xl text-base shadow-brand-500/25">
+                    {user ? 'Upgrade Now' : 'Start Free Trial'}
+                </Button>
             </div>
 
             {/* Agency */}
