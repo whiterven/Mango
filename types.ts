@@ -123,6 +123,16 @@ export interface Campaign {
   images: GeneratedImage[];
 }
 
+export interface Task {
+  id: string;
+  title: string;
+  completed: boolean;
+  priority: 'low' | 'medium' | 'high';
+  category: string;
+  dueDate?: number; // timestamp
+  createdAt: number;
+}
+
 export interface ViralPattern {
   id: string;
   name: string;

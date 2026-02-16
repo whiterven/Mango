@@ -16,8 +16,9 @@ const getEnv = (key: string) => {
   }
 };
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL');
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
+// Use provided credentials as default fallback
+const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://ryzbiptghbiejqbzorfc.supabase.co';
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || 'sb_publishable_KbRLPSR__som_DPUXM60SQ_FXTyvH21';
 
 let supabaseInstance: SupabaseClient | null = null;
 

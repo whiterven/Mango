@@ -1,18 +1,24 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { schedulerService, ScheduledItem } from '../services/schedulerService';
+import { taskService } from '../services/taskService';
 import { useCampaignStore } from '../store/CampaignContext';
+import { Task } from '../types';
 
 export const Scheduler: React.FC = () => {
   const { campaigns } = useCampaignStore();
   const [scheduled, setScheduled] = useState<ScheduledItem[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
 
   useEffect(() => {
     setScheduled(schedulerService.getScheduledAds());
+    // Only show incomplete tasks on the calendar
+    setTasks(taskService.getTasks().filter(t => t.dueDate && !t.completed));
   }, []);
 
   // Calendar Logic
@@ -50,10 +56,20 @@ export const Scheduler: React.FC = () => {
   };
 
   const getEventsForDay = (day: number) => {
-      return scheduled.filter(s => {
+      // Add Campaigns
+      const campaignEvents = scheduled.filter(s => {
           const d = new Date(s.scheduledFor);
           return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year;
-      });
+      }).map(c => ({ ...c, type: 'campaign' }));
+      
+      // Add Tasks
+      const taskEvents = tasks.filter(t => {
+          if (!t.dueDate) return false;
+          const d = new Date(t.dueDate);
+          return d.getDate() === day && d.getMonth() === month && d.getFullYear() === year;
+      }).map(t => ({ ...t, type: 'task', name: t.title }));
+
+      return [...campaignEvents, ...taskEvents];
   };
 
   const isToday = (day: number) => {
@@ -66,7 +82,7 @@ export const Scheduler: React.FC = () => {
        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
          <div>
             <h2 className="text-xl font-bold text-white">Campaign Scheduler</h2>
-            <p className="text-slate-500 text-sm">Plan your content distribution.</p>
+            <p className="text-slate-500 text-sm">Plan your content distribution and manage deadlines.</p>
          </div>
        </div>
 
@@ -113,10 +129,21 @@ export const Scheduler: React.FC = () => {
                                   <span className={`text-xs font-bold ${isToday(day) ? 'text-brand-400' : 'text-slate-400'}`}>
                                       {day}
                                   </span>
-                                  <div className="mt-1 space-y-1 overflow-y-auto max-h-[calc(100%-20px)]">
-                                      {events.map(ev => (
-                                          <div key={ev.id} className="text-[9px] bg-brand-600 text-white px-1.5 py-0.5 rounded truncate shadow-sm">
-                                              {ev.campaignName}
+                                  <div className="mt-1 space-y-1 overflow-y-auto max-h-[calc(100%-20px)] custom-scrollbar">
+                                      {events.map((ev: any) => (
+                                          <div 
+                                            key={ev.id} 
+                                            className={`text-[9px] px-1.5 py-0.5 rounded truncate shadow-sm flex items-center gap-1 ${
+                                                ev.type === 'campaign' 
+                                                ? 'bg-brand-600 text-white' 
+                                                : 'bg-slate-700/80 text-blue-200 border border-blue-500/30'
+                                            }`}
+                                            title={ev.type === 'campaign' ? `Campaign: ${ev.campaignName}` : `Task: ${ev.title}`}
+                                          >
+                                              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                                                  ev.type === 'campaign' ? 'bg-white' : 'bg-blue-400'
+                                              }`}></span>
+                                              {ev.type === 'campaign' ? ev.campaignName : ev.title}
                                           </div>
                                       ))}
                                   </div>
@@ -124,13 +151,24 @@ export const Scheduler: React.FC = () => {
                           );
                       })}
                   </div>
+                  
+                  <div className="flex gap-4 mt-4 text-[10px] text-slate-500 justify-end">
+                      <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-brand-500"></span>
+                          Campaign Launch
+                      </div>
+                      <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                          Task Deadline
+                      </div>
+                  </div>
               </Card>
           </div>
 
           {/* Sidebar / Tools */}
           <div className="space-y-6">
               {/* Schedule Action */}
-              <Card title="Schedule Ad">
+              <Card title="Schedule Ad Launch">
                   <div className="space-y-4">
                       <div>
                           <label className="block text-xs font-medium text-slate-400 mb-1.5">Select Date</label>

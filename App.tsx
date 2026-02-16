@@ -17,6 +17,7 @@ import { LandingPage } from './pages/LandingPage';
 import { Onboarding } from './pages/Onboarding';
 import { ViralPatterns } from './pages/ViralPatterns';
 import { Workspace } from './pages/Workspace';
+import { Tasks } from './pages/Tasks';
 import { CampaignProvider, useCampaignStore } from './store/CampaignContext';
 import { ToastProvider } from './store/ToastContext';
 
@@ -83,13 +84,18 @@ const AppContent: React.FC = () => {
   if (view === 'onboarding') return <Onboarding onComplete={handleOnboardingComplete} />;
 
   // App Routes (With Layout)
-  const validAppRoutes = ['dashboard', 'create', 'batch', 'competitor', 'competitors', 'studio', 'templates', 'viral-patterns', 'brand', 'library', 'schedule', 'settings', 'billing', 'results', 'workspace'];
+  const validAppRoutes = ['dashboard', 'create', 'batch', 'competitor', 'competitors', 'studio', 'templates', 'viral-patterns', 'brand', 'library', 'schedule', 'tasks', 'settings', 'billing', 'results', 'workspace'];
   
   if (validAppRoutes.includes(view)) {
     return (
       <Layout 
         currentView={view} 
         onChangeView={setView} 
+        apiKeyReady={true}
+        onRequestKey={() => {
+            const win = window as any;
+            if(win.aistudio) win.aistudio.openSelectKey();
+        }}
       >
         {view === 'dashboard' && <Dashboard onNavigate={setView} />}
         {view === 'create' && <CreateCampaign onComplete={handleCreateComplete} />}
@@ -102,6 +108,7 @@ const AppContent: React.FC = () => {
         {view === 'brand' && <BrandKit />}
         {view === 'library' && <Library />}
         {view === 'schedule' && <Scheduler />}
+        {view === 'tasks' && <Tasks />}
         {view === 'workspace' && <Workspace onNavigate={setView} />}
         {view === 'settings' && <Settings onNavigate={setView} />}
         {view === 'billing' && <Billing onNavigate={setView} />}
