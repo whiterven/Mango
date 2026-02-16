@@ -1,3 +1,4 @@
+
 export type Platform = 'Facebook' | 'Instagram' | 'LinkedIn' | 'TikTok';
 export type AspectRatio = '1:1' | '4:5' | '9:16' | '16:9';
 export type ImageSize = '1K' | '2K' | '4K';
@@ -36,6 +37,14 @@ export interface CompetitorAnalysis {
   detectedHook: string;
   weaknesses: string[];
   opportunityAngle: string;
+}
+
+export interface CompetitorEntry {
+  id: string;
+  name: string;
+  analysis: CompetitorAnalysis;
+  createdAt: number;
+  imageUrl?: string; // Optional thumbnail/reference
 }
 
 export interface AdCopy {
@@ -118,4 +127,12 @@ export interface SavedTemplate {
   name: string;
   prompt: string;
   category: string;
+}
+
+export type ToastType = 'success' | 'error' | 'info' | 'warning';
+
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: ToastType;
 }

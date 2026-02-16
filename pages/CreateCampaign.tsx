@@ -13,12 +13,14 @@ import { directorAgent } from '../agents/directorAgent';
 import { imageAgent } from '../agents/imageAgent';
 import { scraperAgent } from '../agents/scraperAgent';
 import { copyAgent } from '../agents/copyAgent';
-import { Campaign, CampaignStatus, PlannerOutput, DirectorOutput, AspectRatio, BrandProfile, ImageSize, CreativeControls as CreativeControlsType, CompetitorAnalysis, SceneConfiguration, AdCopy } from '../types';
+import { Campaign, CampaignStatus, PlannerOutput, DirectorOutput, AspectRatio, BrandProfile, ImageSize, CreativeControls as CreativeControlsType, CompetitorAnalysis, SceneConfiguration, AdCopy, CompetitorEntry } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SuccessConfetti } from '../components/SuccessConfetti';
+import { useToast } from '../store/ToastContext';
 
 export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
-  const { addCampaign, brands } = useCampaignStore();
+  const { addCampaign, brands, competitors } = useCampaignStore();
+  const toast = useToast();
   
   // Wizard State
   const [step, setStep] = useState(1);
@@ -50,8 +52,13 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
   const [sceneConfig, setSceneConfig] = useState<SceneConfiguration>({
       background: '', lighting: '', cameraAngle: '', props: [], subjectPose: ''
   });
-  const [competitorImage, setCompetitorImage] = useState<string | null>(null);
+  
+  // Competitor Selection State
+  const [compMode, setCompMode] = useState<'library' | 'upload'>('library');
+  const [selectedCompetitorId, setSelectedCompetitorId] = useState('');
   const [competitorAnalysis, setCompetitorAnalysis] = useState<CompetitorAnalysis | null>(null);
+  const [competitorImage, setCompetitorImage] = useState<string | null>(null);
+  
   const [scrapedBrand, setScrapedBrand] = useState<Partial<BrandProfile> | null>(null);
 
   // Pipeline Data
@@ -60,10 +67,33 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
 
   const addLog = (msg: string) => setLogs(prev => [...prev, msg]);
 
+  // Handle Competitor Selection
+  const handleCompetitorSelect = (id: string) => {
+      setSelectedCompetitorId(id);
+      if (id) {
+          const comp = competitors.find(c => c.id === id);
+          if (comp) {
+              setCompetitorAnalysis(comp.analysis);
+              setCompetitorImage(comp.imageUrl || null);
+              toast.info(`Loaded strategy from ${comp.name}`);
+          }
+      } else {
+          setCompetitorAnalysis(null);
+          setCompetitorImage(null);
+      }
+  };
+
+  const handleCompetitorUploadComplete = (image: string, analysis: CompetitorAnalysis) => {
+      setCompetitorImage(image);
+      setCompetitorAnalysis(analysis);
+      addLog(`🕵️ Competitor Spy: I found a weakness in their strategy. They missed "${analysis.opportunityAngle.slice(0, 20)}...".`);
+      toast.success("Competitor analysis complete");
+  };
+
   const handleScrape = async () => {
       if (!websiteUrl) return;
       setLoading(true);
-      addLog(`🕵️ Scraper: Analyzing ${websiteUrl} for brand signals...`);
+      addLog(`🔍 Analyzing ${websiteUrl} to understand your brand identity...`);
       try {
           const data = await scraperAgent(websiteUrl);
           setFormData(prev => ({
@@ -74,32 +104,22 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
           }));
           if (data.brandProfile) {
               setScrapedBrand(data.brandProfile);
-              addLog(`🎨 Brand Memory: Extracted colors ${data.brandProfile.primaryColor} & ${data.brandProfile.secondaryColor}`);
+              addLog(`🎨 Found brand colors: ${data.brandProfile.primaryColor} & ${data.brandProfile.secondaryColor}`);
+              toast.success("Website analysis complete");
           }
-          addLog("✅ Data extracted successfully.");
+          addLog("✅ Brand details imported successfully.");
       } catch (e) {
-          addLog(`❌ Scrape Error: ${e}`);
+          addLog(`❌ Could not analyze website.`);
+          toast.error("Failed to analyze website. Please check the URL.");
       } finally {
           setLoading(false);
       }
   };
 
-  const handleCompetitorAnalysisComplete = (image: string, analysis: CompetitorAnalysis) => {
-      setCompetitorImage(image);
-      setCompetitorAnalysis(analysis);
-      addLog(`🕵️ Competitor Agent: I found a weakness in their strategy. They missed "${analysis.opportunityAngle.slice(0, 20)}...".`);
-  };
-
-  const handleCompetitorClear = () => {
-      setCompetitorImage(null);
-      setCompetitorAnalysis(null);
-  };
-
   const handleRunPlanner = async () => {
     setLoading(true);
-    // Move visual state to step 2 immediately to show skeletons
     setStep(2);
-    addLog("🧠 Planner Agent: Initializing deep psychographic scan...");
+    addLog("🧠 Analyzing target audience psychology...");
     try {
       let activeBrand: BrandProfile | undefined = brands.find(b => b.id === formData.brandId);
       
@@ -116,21 +136,27 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
       }
 
       if (activeBrand) {
-          addLog(`🧬 Brand DNA: Loading identity for ${activeBrand.name}...`);
+          addLog(`🧬 Loading Brand DNA for ${activeBrand.name}...`);
+      }
+
+      if (competitorAnalysis) {
+          addLog(`⚔️ Integrating counter-strategy against competitor weakness...`);
       }
 
       const res = await plannerAgent(
         formData.productName, 
         formData.description, 
         formData.audience, 
-        activeBrand
+        activeBrand,
+        competitorAnalysis || undefined
       );
 
       setPlannerResult(res);
-      addLog(`💡 Planner Agent: I've found a "${res.angle}" angle that triggers ${res.emotion}.`);
+      addLog(`💡 Strategy found: "${res.angle}" angle triggering ${res.emotion}.`);
     } catch (e) {
       addLog(`❌ Error: ${e}`);
-      setStep(1); // Go back on error
+      toast.error("Planner Agent failed. Please try again.");
+      setStep(1); 
     } finally {
       setLoading(false);
     }
@@ -139,22 +165,23 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
   const handleRunDirector = async () => {
     if (!plannerResult) return;
     setLoading(true);
-    setStep(3); // Move visual state to step 3 immediately
-    addLog(`🎬 Director Agent: Translating strategy into ${formData.variationCount} distinct visual concepts...`);
-    addLog(`⚙️ Applying Creative Controls: ${creativeControls.mood} mood, ${creativeControls.minimalism}% minimalism.`);
+    setStep(3); 
+    addLog(`🎬 Designing ${formData.variationCount} unique visual concepts...`);
+    addLog(`⚙️ Applying styles: ${creativeControls.mood} mood, ${creativeControls.minimalism}% minimalism.`);
     try {
       const res = await directorAgent(
         plannerResult, 
         formData.platform, 
         Number(formData.variationCount), 
-        undefined, // No feedback initially
+        undefined, 
         creativeControls
       );
       setDirectorResult(res);
-      addLog(`✨ Director Agent: Concepts optimized. Predicted attention score: ${res.creativeStrength.overall}/100.`);
+      addLog(`✨ Creative direction set. Predicted Attention Score: ${res.creativeStrength.overall}/100.`);
     } catch (e) {
       addLog(`❌ Error: ${e}`);
-      setStep(2); // Go back
+      toast.error("Director Agent failed. Please try again.");
+      setStep(2); 
     } finally {
       setLoading(false);
     }
@@ -163,11 +190,10 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
   const handleGenerateImages = async () => {
     if (!directorResult || !plannerResult) return;
     setLoading(true);
-    addLog("🚀 Production Agent: Spinning up render engine...");
+    addLog("🚀 Starting production engine...");
     
     try {
-        // Parallel: Image Generation AND Copywriting
-        addLog("✍️ Copywriter Agent: Drafting high-conversion primary text...");
+        addLog("✍️ Writing high-converting ad copy...");
         
         const copyPromise = copyAgent(
             formData.productName, 
@@ -183,7 +209,7 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
             const generatedImages = [];
             const prompts = directorResult.generationPrompts;
             for (let i = 0; i < prompts.length; i++) {
-                 addLog(`🎨 Production Agent: Rendering asset ${i + 1}/${prompts.length} [1K Resolution]...`);
+                 addLog(`🎨 Generating image ${i + 1} of ${prompts.length}...`);
                  try {
                     const imgUrl = await imageAgent(prompts[i], formData.aspectRatio, formData.imageSize);
                     generatedImages.push({
@@ -219,13 +245,15 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
         };
 
         addCampaign(newCampaign);
-        addLog("🎉 System: Campaign finalized. Saving assets...");
+        addLog("🎉 Campaign ready! Saving assets...");
+        toast.success("Campaign generated successfully!");
         setShowConfetti(true);
         setTimeout(() => {
           onComplete();
         }, 3000);
     } catch (e) {
         addLog(`❌ Critical Error: ${e}`);
+        toast.error("Generation failed. Please try again later.");
         setLoading(false);
     }
   };
@@ -379,13 +407,53 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
 
             {/* Right Col: Competitor & Controls */}
             <div className="space-y-5">
-               {/* Competitor Upload */}
-               <CompetitorUpload 
-                 onAnalysisComplete={handleCompetitorAnalysisComplete}
-                 onClear={handleCompetitorClear}
-                 image={competitorImage}
-                 analysis={competitorAnalysis}
-               />
+               {/* Competitor Strategy Selection */}
+               <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50">
+                   <div className="flex justify-between items-center mb-3">
+                       <h4 className="text-xs font-bold text-slate-400 uppercase">Competitor Intel</h4>
+                       <div className="flex bg-slate-800 rounded p-0.5">
+                           <button 
+                               onClick={() => setCompMode('library')}
+                               className={`px-2 py-0.5 text-[10px] rounded ${compMode === 'library' ? 'bg-brand-600 text-white' : 'text-slate-400'}`}
+                           >Library</button>
+                           <button 
+                               onClick={() => setCompMode('upload')}
+                               className={`px-2 py-0.5 text-[10px] rounded ${compMode === 'upload' ? 'bg-brand-600 text-white' : 'text-slate-400'}`}
+                           >New</button>
+                       </div>
+                   </div>
+
+                   {compMode === 'library' ? (
+                       <div className="space-y-3">
+                           <select 
+                               className="w-full bg-slate-800 border border-slate-700/60 rounded-md px-3 py-2 text-xs text-white focus:ring-1 focus:ring-brand-500 outline-none"
+                               value={selectedCompetitorId}
+                               onChange={(e) => handleCompetitorSelect(e.target.value)}
+                           >
+                               <option value="">-- No Competitor Strategy --</option>
+                               {competitors.map(c => (
+                                   <option key={c.id} value={c.id}>{c.name}</option>
+                               ))}
+                           </select>
+                           
+                           {competitorAnalysis && (
+                               <div className="p-3 bg-brand-900/10 border border-brand-500/20 rounded-lg animate-in fade-in">
+                                   <h5 className="text-[10px] font-bold text-brand-400 uppercase mb-1">Winning Angle</h5>
+                                   <p className="text-[10px] text-slate-300 leading-relaxed">
+                                       {competitorAnalysis.opportunityAngle}
+                                   </p>
+                               </div>
+                           )}
+                       </div>
+                   ) : (
+                       <CompetitorUpload 
+                           onAnalysisComplete={handleCompetitorUploadComplete}
+                           onClear={() => { setCompetitorImage(null); setCompetitorAnalysis(null); }}
+                           image={competitorImage}
+                           analysis={competitorAnalysis}
+                       />
+                   )}
+               </div>
 
                {/* Creative Controls */}
                <CreativeControls value={creativeControls} onChange={setCreativeControls} />

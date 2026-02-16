@@ -4,6 +4,7 @@ import { Button } from './ui/Button';
 import { fileToBase64 } from '../services/geminiService';
 import { creativeAnalysisAgent, CreativeAnalysisResult } from '../agents/creativeAnalysisAgent';
 import { Badge } from './ui/Badge';
+import { useToast } from '../store/ToastContext';
 
 interface Props {
   imageUrl: string;
@@ -14,6 +15,7 @@ interface Props {
 export const TextOverlayEditor: React.FC<Props> = ({ imageUrl, onSave, onCancel }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
   
   // Text State
   const [text, setText] = useState('Your Hook Here');
@@ -43,6 +45,7 @@ export const TextOverlayEditor: React.FC<Props> = ({ imageUrl, onSave, onCancel 
         setLogoUrl(`data:image/png;base64,${base64}`);
       } catch (err) {
         console.error(err);
+        toast.error("Failed to upload logo.");
       }
     }
   };
@@ -58,9 +61,10 @@ export const TextOverlayEditor: React.FC<Props> = ({ imageUrl, onSave, onCancel 
           const base64 = currentImage.split(',')[1];
           const result = await creativeAnalysisAgent(base64);
           setAnalysisResult(result);
+          toast.success("AI analysis complete");
       } catch (e) {
           console.error("Analysis failed", e);
-          alert("Could not analyze image. Try again.");
+          toast.error("Could not analyze image. Try again.");
           setShowHeatmap(false);
       } finally {
           setIsAnalyzing(false);

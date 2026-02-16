@@ -5,7 +5,7 @@ import { TextOverlayEditor } from '../components/TextOverlayEditor';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
-export const Studio: React.FC = () => {
+export const Studio: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
   const { campaigns } = useCampaignStore();
   const allImages = campaigns.flatMap(c => c.images);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -34,8 +34,17 @@ export const Studio: React.FC = () => {
   return (
     <div className="space-y-6">
        <div className="flex justify-between items-center">
-           <h2 className="text-xl font-bold text-white">Creative Studio</h2>
-           <div className="text-xs text-slate-500">Select an asset to edit</div>
+           <div className="flex items-center gap-4">
+                {/* Optional Back button if coming from Dashboard flow, though Studio is main nav */}
+                <Button variant="secondary" size="sm" onClick={() => onNavigate('dashboard')} className="flex items-center gap-1 md:hidden">
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                    Back
+                </Button>
+                <div>
+                    <h2 className="text-xl font-bold text-white">Creative Studio</h2>
+                    <div className="text-xs text-slate-500">Select an asset to edit</div>
+                </div>
+           </div>
        </div>
 
        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">

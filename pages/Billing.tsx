@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { creditService, CreditState } from '../services/creditService';
 
-export const Billing: React.FC = () => {
+export const Billing: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
   const [credits, setCredits] = useState<CreditState>({ total: 0, used: 0, history: [] });
 
   useEffect(() => {
@@ -17,9 +17,15 @@ export const Billing: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-end justify-between">
-        <div>
-           <h2 className="text-xl font-bold text-white">Billing & Credits</h2>
-           <p className="text-slate-500 text-sm">Manage your subscription and usage limits.</p>
+        <div className="flex items-center gap-4">
+           <Button variant="secondary" size="sm" onClick={() => onNavigate('dashboard')} className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+              Back
+           </Button>
+           <div>
+              <h2 className="text-xl font-bold text-white">Billing & Credits</h2>
+              <p className="text-slate-500 text-sm">Manage your subscription and usage limits.</p>
+           </div>
         </div>
         <Button>Upgrade Plan</Button>
       </div>

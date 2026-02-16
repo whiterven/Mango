@@ -10,6 +10,7 @@ import { Studio } from './pages/Studio';
 import { Templates } from './pages/Templates';
 import { BatchCreate } from './pages/BatchCreate';
 import { CompetitorAnalysisPage } from './pages/CompetitorAnalysisPage';
+import { CompetitorLibrary } from './pages/CompetitorLibrary';
 import { Scheduler } from './pages/Scheduler';
 import { Settings } from './pages/Settings';
 import { LandingPage } from './pages/LandingPage';
@@ -17,6 +18,7 @@ import { Onboarding } from './pages/Onboarding';
 import { ViralPatterns } from './pages/ViralPatterns';
 import { Workspace } from './pages/Workspace';
 import { CampaignProvider, useCampaignStore } from './store/CampaignContext';
+import { ToastProvider } from './store/ToastContext';
 
 // Public Pages
 import { Privacy } from './pages/Privacy';
@@ -33,7 +35,6 @@ import { NotFound } from './pages/NotFound';
 
 const AppContent: React.FC = () => {
   const [view, setView] = useState('landing');
-  const [apiKeyReady, setApiKeyReady] = useState(false);
   const { currentCampaign } = useCampaignStore();
 
   const checkApiKey = async () => {
@@ -41,19 +42,13 @@ const AppContent: React.FC = () => {
     if (win.aistudio) {
         try {
             const hasKey = await win.aistudio.hasSelectedApiKey();
-            setApiKeyReady(hasKey);
+            if (!hasKey) {
+                await win.aistudio.openSelectKey();
+            }
         } catch(e) {
             console.error(e);
         }
     }
-  };
-
-  const requestApiKey = async () => {
-     const win = window as any;
-     if (win.aistudio) {
-         await win.aistudio.openSelectKey();
-         setApiKeyReady(true);
-     }
   };
 
   useEffect(() => {
@@ -88,30 +83,29 @@ const AppContent: React.FC = () => {
   if (view === 'onboarding') return <Onboarding onComplete={handleOnboardingComplete} />;
 
   // App Routes (With Layout)
-  const validAppRoutes = ['dashboard', 'create', 'batch', 'competitor', 'studio', 'templates', 'viral-patterns', 'brand', 'library', 'schedule', 'settings', 'billing', 'results', 'workspace'];
+  const validAppRoutes = ['dashboard', 'create', 'batch', 'competitor', 'competitors', 'studio', 'templates', 'viral-patterns', 'brand', 'library', 'schedule', 'settings', 'billing', 'results', 'workspace'];
   
   if (validAppRoutes.includes(view)) {
     return (
       <Layout 
         currentView={view} 
         onChangeView={setView} 
-        apiKeyReady={apiKeyReady}
-        onRequestKey={requestApiKey}
       >
         {view === 'dashboard' && <Dashboard onNavigate={setView} />}
         {view === 'create' && <CreateCampaign onComplete={handleCreateComplete} />}
-        {view === 'batch' && <BatchCreate />}
+        {view === 'batch' && <BatchCreate onNavigate={setView} />}
         {view === 'competitor' && <CompetitorAnalysisPage onNavigate={setView} />}
-        {view === 'studio' && <Studio />}
+        {view === 'competitors' && <CompetitorLibrary onNavigate={setView} />}
+        {view === 'studio' && <Studio onNavigate={setView} />}
         {view === 'templates' && <Templates />}
         {view === 'viral-patterns' && <ViralPatterns />}
         {view === 'brand' && <BrandKit />}
         {view === 'library' && <Library />}
         {view === 'schedule' && <Scheduler />}
-        {view === 'workspace' && <Workspace />}
+        {view === 'workspace' && <Workspace onNavigate={setView} />}
         {view === 'settings' && <Settings onNavigate={setView} />}
-        {view === 'billing' && <Billing />}
-        {view === 'results' && currentCampaign && <Results campaignId={currentCampaign.id} />}
+        {view === 'billing' && <Billing onNavigate={setView} />}
+        {view === 'results' && currentCampaign && <Results campaignId={currentCampaign.id} onNavigate={setView} />}
       </Layout>
     );
   }
@@ -122,9 +116,11 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <CampaignProvider>
-      <AppContent />
-    </CampaignProvider>
+    <ToastProvider>
+      <CampaignProvider>
+        <AppContent />
+      </CampaignProvider>
+    </ToastProvider>
   );
 };
 

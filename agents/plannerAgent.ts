@@ -1,14 +1,15 @@
 
 import { Type, Schema } from "@google/genai";
 import { getAiClient } from "../services/aiService";
-import { PlannerOutput, BrandProfile } from "../types";
+import { PlannerOutput, BrandProfile, CompetitorAnalysis } from "../types";
 import { patterns } from "../data/adPatterns";
 
 export const plannerAgent = async (
   product: string,
   description: string,
   audience: string,
-  brand?: BrandProfile
+  brand?: BrandProfile,
+  competitor?: CompetitorAnalysis
 ): Promise<PlannerOutput> => {
   const ai = getAiClient();
 
@@ -24,6 +25,18 @@ export const plannerAgent = async (
       *Constraint*: The "Visual Concept" MUST explicitly describe how ${brand.primaryColor} is integrated into the scene (e.g., "Neon lighting in ${brand.primaryColor}", "Prop styling using ${brand.primaryColor} accents").
       ` 
     : "### ⚪ GENERIC BRANDING\nNo specific brand kit provided. Adopt a 'Modern Minimalist' aesthetic suitable for high-conversion e-commerce.";
+
+  // Inject competitor strategy if available
+  const competitorContext = competitor
+    ? `
+      ### ⚔️ COMPETITOR COUNTER-STRATEGY (CRITICAL)
+      The user wants to beat a specific competitor ad.
+      - **Their Weakness**: ${competitor.weaknesses.join(', ')}
+      - **Our Winning Angle**: ${competitor.opportunityAngle}
+      
+      *Constraint*: Your Strategy MUST explicitly exploit this weakness. If they are boring, we are exciting. If they are complicated, we are simple. Use the 'Winning Angle' as the core foundation.
+    `
+    : "";
 
   // Inject viral patterns into context
   const viralPatternContext = patterns.map(p => `- "${p.name}": ${p.description} (Use strictly if it fits the angle)`).join('\n');
@@ -61,6 +74,8 @@ export const plannerAgent = async (
     - **Target Persona**: ${audience} (Analyze their deepest fears and desires before generating)
 
     ${brandContext}
+    
+    ${competitorContext}
 
     ### ⚡ MISSION
     Develop ONE high-impact ad concept. 

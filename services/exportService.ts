@@ -1,3 +1,4 @@
+
 import { GeneratedImage } from "../types";
 
 export const exportService = {
@@ -8,7 +9,7 @@ export const exportService = {
     // Create link
     const link = document.createElement('a');
     link.href = image.url;
-    link.download = `adbanana_${image.id}.${format}`;
+    link.download = `mango_${image.id}.${format}`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

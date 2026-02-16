@@ -1,9 +1,10 @@
 
-import { BrandProfile, Campaign } from "../types";
+import { BrandProfile, Campaign, CompetitorEntry } from "../types";
 
 const KEYS = {
   BRANDS: 'mango_brands',
-  CAMPAIGNS: 'mango_campaigns'
+  CAMPAIGNS: 'mango_campaigns',
+  COMPETITORS: 'mango_competitors'
 };
 
 export const storageService = {
@@ -48,5 +49,29 @@ export const storageService = {
     } catch {
       return [];
     }
+  },
+
+  saveCompetitor: (competitor: CompetitorEntry) => {
+    const competitors = storageService.getCompetitors();
+    const existingIndex = competitors.findIndex(c => c.id === competitor.id);
+    if (existingIndex >= 0) {
+      competitors[existingIndex] = competitor;
+    } else {
+      competitors.unshift(competitor);
+    }
+    localStorage.setItem(KEYS.COMPETITORS, JSON.stringify(competitors));
+  },
+
+  getCompetitors: (): CompetitorEntry[] => {
+    try {
+      return JSON.parse(localStorage.getItem(KEYS.COMPETITORS) || '[]');
+    } catch {
+      return [];
+    }
+  },
+
+  deleteCompetitor: (id: string) => {
+    const competitors = storageService.getCompetitors().filter(c => c.id !== id);
+    localStorage.setItem(KEYS.COMPETITORS, JSON.stringify(competitors));
   }
 };

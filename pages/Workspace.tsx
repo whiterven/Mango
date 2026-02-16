@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { teamService, TeamMember } from '../services/teamService';
 
-export const Workspace: React.FC = () => {
+export const Workspace: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
 
@@ -23,9 +23,15 @@ export const Workspace: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div>
-        <h2 className="text-xl font-bold text-white">Team Workspace</h2>
-        <p className="text-slate-500 text-sm">Manage access and collaborate with your team.</p>
+      <div className="flex items-center gap-4">
+        <Button variant="secondary" size="sm" onClick={() => onNavigate('dashboard')} className="flex items-center gap-1">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+            Back
+        </Button>
+        <div>
+            <h2 className="text-xl font-bold text-white">Team Workspace</h2>
+            <p className="text-slate-500 text-sm">Manage access and collaborate with your team.</p>
+        </div>
       </div>
 
       <Card title="Invite Members">

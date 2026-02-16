@@ -57,7 +57,7 @@ export const HowItWorks: React.FC = () => {
              <div className="absolute top-6 right-6 text-slate-700 font-black font-mono text-xs bg-slate-900 px-2 py-1 rounded border border-slate-800 group-hover:text-brand-500 group-hover:border-brand-500/30 transition-colors">03</div>
              <h3 className="text-xl font-bold font-display text-white mb-3">The Generator</h3>
              <p className="text-slate-400 text-xs leading-relaxed">
-               Renders high-fidelity assets using Gemini 3 Pro & Nano Banana. Packages images with compliant ad copy.
+               Renders high-fidelity assets using our proprietary visual engine. Packages images with compliant ad copy.
              </p>
              <div className="mt-4 p-2 bg-slate-900 rounded border border-slate-800 text-[10px] text-slate-500 font-mono flex items-center gap-2">
                 <span className="text-brand-500">→</span> Output: 3x High-Res PNGs

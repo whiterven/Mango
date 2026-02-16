@@ -1,9 +1,11 @@
+
 import React, { useRef, useState } from 'react';
 import { fileToBase64 } from '../services/geminiService';
 import { competitorAgent } from '../agents/competitorAgent';
 import { CompetitorAnalysis } from '../types';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
+import { useToast } from '../store/ToastContext';
 
 interface Props {
   onAnalysisComplete: (image: string, analysis: CompetitorAnalysis) => void;
@@ -15,21 +17,21 @@ interface Props {
 export const CompetitorUpload: React.FC<Props> = ({ onAnalysisComplete, onClear, image, analysis }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<'upload' | 'url'>('upload');
   const [url, setUrl] = useState('');
+  const toast = useToast();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setLoading(true);
-      setError(null);
       try {
         const base64 = await fileToBase64(e.target.files[0]);
         const result = await competitorAgent(base64, 'image');
         onAnalysisComplete(base64, result);
+        toast.success("Competitor ad analyzed");
       } catch (err) {
         console.error(err);
-        setError("Failed to analyze image. Please try again.");
+        toast.error("Failed to analyze image. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -39,16 +41,16 @@ export const CompetitorUpload: React.FC<Props> = ({ onAnalysisComplete, onClear,
   const handleUrlAnalyze = async () => {
     if (!url) return;
     setLoading(true);
-    setError(null);
     try {
       // Pass a placeholder image for the URL mode or handle strictly as metadata
       const result = await competitorAgent(url, 'url');
       // For URL mode, we don't have an image to display, so we pass a placeholder or null
       // Re-using the image prop to store the URL context if needed, or just ""
       onAnalysisComplete("", result); 
+      toast.success("Competitor URL analyzed");
     } catch (err) {
       console.error(err);
-      setError("Failed to analyze URL. Ensure it is accessible.");
+      toast.error("Failed to analyze URL. Ensure it is accessible.");
     } finally {
       setLoading(false);
     }
@@ -141,7 +143,6 @@ export const CompetitorUpload: React.FC<Props> = ({ onAnalysisComplete, onClear,
             </button>
           </div>
       )}
-      {error && <p className="text-[10px] text-red-400 mt-2 text-center">{error}</p>}
     </div>
   );
 };

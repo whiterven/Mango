@@ -68,7 +68,7 @@ export const Onboarding: React.FC<{ onComplete: () => void }> = ({ onComplete })
              {step === 3 && <span className="text-2xl">🚀</span>}
            </div>
            <h1 className="text-2xl font-bold text-white mb-2">
-             {step === 1 ? "Welcome to AdBanana" : step === 2 ? "Define Your Brand" : "Ready for Liftoff"}
+             {step === 1 ? "Welcome to Mango" : step === 2 ? "Define Your Brand" : "Ready for Liftoff"}
            </h1>
            <p className="text-slate-400 text-sm">
              {step === 1 ? "Let's set up your workspace for success." : step === 2 ? "Teach the AI about your visual identity." : "What is your main focus right now?"}

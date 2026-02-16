@@ -8,19 +8,27 @@ import { CopyPanel } from '../components/CopyPanel';
 import { directorAgent } from '../agents/directorAgent';
 import { imageAgent } from '../agents/imageAgent';
 import { AspectRatio } from '../types';
+import { useToast } from '../store/ToastContext';
 
-export const Results: React.FC<{ campaignId: string }> = ({ campaignId }) => {
+interface ResultsProps {
+  campaignId: string;
+  onNavigate: (view: string) => void;
+}
+
+export const Results: React.FC<ResultsProps> = ({ campaignId, onNavigate }) => {
   const { campaigns, updateCampaign } = useCampaignStore();
   const campaign = campaigns.find(c => c.id === campaignId);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [showRegenMenu, setShowRegenMenu] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const toast = useToast();
 
   if (!campaign) return <div>Campaign not found</div>;
 
   const handleRegenerate = async (feedback: string) => {
       setShowRegenMenu(false);
       setIsRegenerating(true);
+      toast.info("Regenerating creative variant...");
       
       try {
           if (!campaign.plannerOutput) throw new Error("Missing planner data");
@@ -52,26 +60,33 @@ export const Results: React.FC<{ campaignId: string }> = ({ campaignId }) => {
               directorOutput: newDirectorOutput 
           };
           updateCampaign(updatedCampaign);
+          toast.success("New variation generated!");
 
       } catch (e) {
           console.error("Regeneration failed", e);
-          alert("Regeneration failed. See console.");
+          toast.error("Regeneration failed. Please try again.");
       } finally {
           setIsRegenerating(false);
       }
   };
 
   const handleExport = (platform: string) => {
-      alert(`Preparing ${platform} package zip download... (Simulated)`);
+      toast.info(`Preparing ${platform} package zip download... (Simulated)`);
       setShowExportMenu(false);
   };
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex justify-between items-end mb-6 relative">
-          <div>
-              <h2 className="text-xl font-bold text-white">{campaign.name}</h2>
-              <p className="text-slate-500 text-xs">Generated on {new Date(campaign.createdAt).toLocaleDateString()}</p>
+      <div className="flex justify-between items-center mb-6 relative">
+          <div className="flex items-center gap-4">
+              <Button variant="secondary" size="sm" onClick={() => onNavigate('dashboard')} className="flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                  Back
+              </Button>
+              <div>
+                  <h2 className="text-xl font-bold text-white">{campaign.name}</h2>
+                  <p className="text-slate-500 text-xs">Generated on {new Date(campaign.createdAt).toLocaleDateString()}</p>
+              </div>
           </div>
           <div className="flex gap-2 relative">
               <div className="relative">

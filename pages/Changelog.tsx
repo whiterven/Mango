@@ -50,7 +50,7 @@ export const Changelog: React.FC<{ onNavigate: (view: string) => void }> = ({ on
                         <li>New "Agent Pipeline" visualization to see the AI thinking.</li>
                         <li>Multi-variation generation (up to 5 images at once).</li>
                         <li>Added "Creative Studio" for simple text overlay edits.</li>
-                        <li>Migrated backend to Gemini 3 Pro models for better photorealism.</li>
+                        <li>Migrated backend to next-gen AI models for better photorealism.</li>
                     </ul>
                 </div>
             </div>
