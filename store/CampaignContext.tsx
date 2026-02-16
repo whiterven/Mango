@@ -19,6 +19,7 @@ interface CampaignContextType {
   deleteBrand: (id: string) => Promise<void>;
   addCompetitor: (competitor: CompetitorEntry) => Promise<void>;
   deleteCompetitor: (id: string) => Promise<void>;
+  deleteImage: (imageId: string, campaignId: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -110,13 +111,34 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     await creativeService.deleteCompetitor(id);
   };
 
+  const deleteImage = async (imageId: string, campaignId: string) => {
+    if (!user) return;
+    
+    setCampaigns(prev => prev.map(c => {
+        if (c.id === campaignId) {
+            return { 
+                ...c, 
+                images: c.images.filter(img => img.id !== imageId) 
+            };
+        }
+        return c;
+    }));
+
+    try {
+        await campaignService.deleteImage(imageId);
+    } catch (e) {
+        console.error("Failed to delete image", e);
+        refreshData(); // Sync back if failed
+    }
+  };
+
   return (
     <CampaignContext.Provider value={{ 
       campaigns, 
       brands, 
       competitors,
       currentCampaign, 
-      isLoading,
+      isLoading, 
       addCampaign, 
       updateCampaign, 
       setCurrentCampaign, 
@@ -124,6 +146,7 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       deleteBrand,
       addCompetitor,
       deleteCompetitor,
+      deleteImage,
       refreshData
     }}>
       {children}

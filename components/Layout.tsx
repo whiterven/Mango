@@ -47,8 +47,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeV
       {/* Mobile Header */}
       <div className="md:hidden flex items-center justify-between p-3 bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
           <div className="flex items-center gap-2">
-             <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-yellow-500 rounded-md flex items-center justify-center font-bold text-white text-base">B</div>
-             <span className="font-bold text-base text-white">AdBanana</span>
+             <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-yellow-500 rounded-md flex items-center justify-center font-bold text-white text-base">M</div>
+             <span className="font-bold text-base text-white">Mango</span>
           </div>
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-300">
              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -67,8 +67,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeV
           sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       }`}>
         <div className="hidden md:flex p-5 border-b border-slate-800 items-center gap-2.5 mb-2">
-          <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-yellow-500 rounded-md flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20 text-base">B</div>
-          <span className="font-bold text-lg tracking-tight text-white">AdBanana</span>
+          <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-yellow-500 rounded-md flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20 text-base">M</div>
+          <span className="font-bold text-lg tracking-tight text-white">Mango</span>
           <span className="text-[9px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700 ml-auto">PRO</span>
         </div>
 

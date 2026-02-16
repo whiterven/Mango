@@ -36,6 +36,9 @@ create policy "Users can view own profile" on public.profiles
 
 create policy "Users can update own profile" on public.profiles
   for update using (auth.uid() = id);
+
+create policy "Users can insert own profile" on public.profiles
+  for insert with check (auth.uid() = id);
 ```
 
 ### 2.2 Brand Kits
@@ -138,6 +141,9 @@ create policy "Users can view own images" on public.generated_images
 
 create policy "Users can insert own images" on public.generated_images
   for insert with check (auth.uid() = user_id);
+
+create policy "Users can delete own images" on public.generated_images
+  for delete using (auth.uid() = user_id);
 ```
 
 ### 2.6 Scheduler
@@ -180,6 +186,9 @@ create policy "Users can view own credits" on public.user_credits
 
 create policy "Users can update own credits" on public.user_credits
   for update using (auth.uid() = user_id);
+
+create policy "Users can insert own credits" on public.user_credits
+  for insert with check (auth.uid() = user_id);
 ```
 
 ### 2.8 Activity Logs
@@ -317,6 +326,14 @@ with check (bucket_id = 'competitor-assets' AND (storage.foldername(name))[1] = 
 create policy "Users can delete own campaign assets"
 on storage.objects for delete to authenticated
 using (bucket_id = 'campaign-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "Users can delete own brand assets"
+on storage.objects for delete to authenticated
+using (bucket_id = 'brand-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "Users can delete own competitor assets"
+on storage.objects for delete to authenticated
+using (bucket_id = 'competitor-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policy: Allow Public Read Access
 create policy "Public access to assets"

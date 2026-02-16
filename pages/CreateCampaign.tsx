@@ -21,7 +21,7 @@ import { useAuth } from '../hooks/useAuth';
 import { creditService } from '../services/creditService';
 import { activityService } from '../services/db/activityService';
 
-export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+export const CreateCampaign: React.FC<{ onComplete: () => void; onNavigate: (view: string) => void }> = ({ onComplete, onNavigate }) => {
   const { addCampaign, brands, competitors } = useCampaignStore();
   const { user } = useAuth();
   const toast = useToast();
@@ -480,9 +480,21 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
                <CreativeControls value={creativeControls} onChange={setCreativeControls} />
                
                <div className="pt-2">
-                  <Button onClick={handleRunPlanner} isLoading={loading} className="w-full" size="md">
-                    Generate Strategy
-                  </Button>
+                  {!user ? (
+                      <div className="bg-slate-900 p-4 rounded-xl border border-slate-700 text-center space-y-3">
+                          <div className="w-10 h-10 bg-brand-900/20 rounded-full flex items-center justify-center mx-auto text-xl">🔒</div>
+                          <div>
+                              <h4 className="text-white font-bold text-sm">Account Required</h4>
+                              <p className="text-slate-400 text-xs mt-1">Sign up to generate unlimited ad concepts.</p>
+                          </div>
+                          <Button onClick={() => onNavigate('signup')} className="w-full">Create Free Account</Button>
+                          <button onClick={() => onNavigate('login')} className="text-xs text-slate-500 hover:text-white">Already have an account?</button>
+                      </div>
+                  ) : (
+                      <Button onClick={handleRunPlanner} isLoading={loading} className="w-full" size="md">
+                        Generate Strategy
+                      </Button>
+                  )}
                </div>
             </div>
           </div>

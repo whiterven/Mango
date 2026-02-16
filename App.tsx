@@ -98,7 +98,7 @@ const AppContent: React.FC = () => {
         }}
       >
         {view === 'dashboard' && <Dashboard onNavigate={setView} />}
-        {view === 'create' && <CreateCampaign onComplete={handleCreateComplete} />}
+        {view === 'create' && <CreateCampaign onComplete={handleCreateComplete} onNavigate={setView} />}
         {view === 'batch' && <BatchCreate onNavigate={setView} />}
         {view === 'competitor' && <CompetitorAnalysisPage onNavigate={setView} />}
         {view === 'competitors' && <CompetitorLibrary onNavigate={setView} />}

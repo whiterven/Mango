@@ -96,5 +96,24 @@ export const campaignService = {
 
     const { error } = await supabase.from('campaigns').delete().eq('id', campaignId);
     if (error) throw error;
+  },
+
+  deleteImage: async (imageId: string): Promise<void> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) throw new Error("Database connection required");
+
+    // Attempt to delete from storage first if path exists
+    const { data: img } = await supabase
+        .from('generated_images')
+        .select('storage_path')
+        .eq('id', imageId)
+        .single();
+
+    if (img?.storage_path) {
+        await storageService.delete(img.storage_path);
+    }
+
+    const { error } = await supabase.from('generated_images').delete().eq('id', imageId);
+    if (error) throw error;
   }
 };
