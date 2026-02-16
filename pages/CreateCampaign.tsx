@@ -19,6 +19,7 @@ import { SuccessConfetti } from '../components/SuccessConfetti';
 import { useToast } from '../store/ToastContext';
 import { useAuth } from '../hooks/useAuth';
 import { creditService } from '../services/creditService';
+import { activityService } from '../services/db/activityService';
 
 export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const { addCampaign, brands, competitors } = useCampaignStore();
@@ -70,9 +71,6 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
 
   const addLog = (msg: string) => setLogs(prev => [...prev, msg]);
 
-  // ... (Keep existing handlers for competitor, scrape, planner, director) ...
-  // [OMITTED FOR BREVITY - SAME AS ORIGINAL]
-  
   // Handle Competitor Selection
   const handleCompetitorSelect = (id: string) => {
       setSelectedCompetitorId(id);
@@ -197,7 +195,6 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
     
     if (!hasCredits) {
         toast.error(`Not enough credits! This campaign requires ${cost} credits.`);
-        // In a real app, open upgrade modal here
         return;
     }
 
@@ -242,12 +239,8 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
         const [adCopy, generatedImages] = await Promise.all([copyPromise, imagePromise]);
 
         // Deduct Credits
-        const success = await creditService.deduct(user.id, generatedImages.length, `Campaign: ${formData.productName}`);
-        if (success) {
-            addLog(`💳 Deducted ${generatedImages.length} credits.`);
-        } else {
-            addLog(`⚠️ Credit sync warning.`);
-        }
+        await creditService.deduct(user.id, generatedImages.length, `Campaign: ${formData.productName}`);
+        addLog(`💳 Deducted ${generatedImages.length} credits.`);
 
         const newCampaign: Campaign = {
             id: crypto.randomUUID(),
@@ -265,7 +258,14 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
             competitorAnalysis: competitorAnalysis || undefined
         };
 
-        addCampaign(newCampaign);
+        await addCampaign(newCampaign);
+        
+        // Log Activity to DB
+        await activityService.logActivity(user.id, `Created Campaign: ${newCampaign.name}`, { 
+            campaignId: newCampaign.id,
+            variations: generatedImages.length
+        });
+
         addLog("🎉 Campaign ready! Saving assets...");
         toast.success("Campaign generated successfully!");
         setShowConfetti(true);

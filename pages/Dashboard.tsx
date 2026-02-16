@@ -1,23 +1,44 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useCampaignStore } from '../store/CampaignContext';
 import { Badge } from '../components/ui/Badge';
 import { RecentActivity } from '../components/dashboard/RecentActivity';
 import { PerformanceChart } from '../components/dashboard/PerformanceChart';
+import { useAuth } from '../hooks/useAuth';
+import { creditService } from '../services/creditService';
 
 export const Dashboard: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
-  const { campaigns } = useCampaignStore();
-  const recentCampaigns = campaigns.slice(0, 5);
-  const totalAssets = campaigns.reduce((acc, c) => acc + c.images.length, 0);
+  const { user } = useAuth();
+  const { campaigns, isLoading } = useCampaignStore();
+  const [credits, setCredits] = useState<{total: number, used: number} | null>(null);
   
-  // Simulated intelligent insights
-  const insights = [
-    { type: 'positive', text: "Your 'Dark Mode' variations have a 15% higher predicted CTR." },
-    { type: 'tip', text: "Try adding 'Social Proof' hooks to your next campaign." },
-    { type: 'warning', text: "3 Competitors launched ads with 'Urgency' angles this week." }
-  ];
+  const recentCampaigns = campaigns.slice(0, 5);
+  const totalAssets = campaigns.reduce((acc, c) => acc + (c.images?.length || 0), 0);
+  
+  const avgScore = campaigns.length > 0 
+    ? Math.round(campaigns.reduce((acc, c) => acc + (c.directorOutput?.creativeStrength?.overall || 0), 0) / campaigns.length)
+    : 0;
+
+  useEffect(() => {
+      if (user) {
+          creditService.getState(user.id).then(setCredits);
+      }
+  }, [user]);
+
+  // Dynamic insights based on real data
+  const insights = [];
+  if (campaigns.length > 0) {
+      if (avgScore > 80) insights.push({ type: 'positive', text: `Great job! Your campaigns are averaging a high score of ${avgScore}/100.` });
+      else if (avgScore < 50) insights.push({ type: 'warning', text: `Your average attention score is ${avgScore}. Try using more contrast in "Creative Controls".` });
+      else insights.push({ type: 'tip', text: `Your campaigns are performing steadily at ${avgScore}/100.` });
+  } else {
+      insights.push({ type: 'tip', text: "Launch your first campaign to unlock AI performance insights." });
+  }
+  
+  // Credit usage bar
+  const creditPercent = credits ? Math.min((credits.used / credits.total) * 100, 100) : 0;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -29,7 +50,7 @@ export const Dashboard: React.FC<{ onNavigate: (view: string) => void }> = ({ on
           <h4 className="text-slate-400 text-[10px] font-bold uppercase mb-2">Total Campaigns</h4>
           <p className="text-3xl font-black text-white">{campaigns.length}</p>
           <div className="mt-2 text-[10px] text-green-400 flex items-center gap-1">
-             <span className="bg-green-900/30 px-1 rounded">▲ 12%</span> vs last month
+             <span className="bg-green-900/30 px-1 rounded">Active</span> in Workspace
           </div>
         </Card>
 
@@ -37,26 +58,32 @@ export const Dashboard: React.FC<{ onNavigate: (view: string) => void }> = ({ on
            <h4 className="text-slate-400 text-[10px] font-bold uppercase mb-2">Generated Creatives</h4>
            <p className="text-3xl font-black text-white">{totalAssets}</p>
            <div className="mt-2 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-               <div className="bg-blue-500 h-full w-[70%]"></div>
+               {/* Just a visual bar for asset volume, arbitrarily maxed at 100 for visual */}
+               <div className="bg-blue-500 h-full transition-all duration-1000" style={{ width: `${Math.min(totalAssets, 100)}%` }}></div>
            </div>
-           <p className="text-[9px] text-slate-500 mt-1">70% of monthly quota</p>
+           <p className="text-[9px] text-slate-500 mt-1">Assets ready for export</p>
         </Card>
 
         <Card className="relative overflow-hidden group">
            <h4 className="text-slate-400 text-[10px] font-bold uppercase mb-2">Avg. Attention Score</h4>
            <div className="flex items-end gap-2">
-               <p className="text-3xl font-black text-brand-400">87</p>
+               <p className={`text-3xl font-black ${avgScore >= 70 ? 'text-green-400' : avgScore >= 50 ? 'text-brand-400' : 'text-yellow-400'}`}>{avgScore}</p>
                <span className="text-xs text-slate-500 mb-1">/ 100</span>
            </div>
            <div className="mt-2 flex gap-1">
-               {[1,2,3,4,5].map(i => <div key={i} className={`h-1.5 w-full rounded-sm ${i < 4 ? 'bg-brand-500' : 'bg-slate-700'}`}></div>)}
+               {[1,2,3,4,5].map(i => (
+                   <div key={i} className={`h-1.5 w-full rounded-sm ${avgScore >= i*20 ? 'bg-brand-500' : 'bg-slate-700'}`}></div>
+               ))}
            </div>
         </Card>
 
         <Card className="relative overflow-hidden group bg-slate-800/50 border-slate-700/50">
            <h4 className="text-slate-400 text-[10px] font-bold uppercase mb-2">Credits Remaining</h4>
-           <p className="text-3xl font-black text-white">420</p>
-           <Button onClick={() => onNavigate('billing')} size="sm" variant="outline" className="mt-2 w-full text-[10px] h-7">Top Up</Button>
+           <p className="text-3xl font-black text-white">{credits ? credits.total - credits.used : '...'}</p>
+           <div className="w-full bg-slate-800 h-1 rounded-full mt-2 overflow-hidden">
+               <div className="bg-white h-full" style={{width: `${100 - creditPercent}%`}}></div>
+           </div>
+           <Button onClick={() => onNavigate('billing')} size="sm" variant="outline" className="mt-3 w-full text-[10px] h-7">Top Up</Button>
         </Card>
       </div>
 
@@ -85,7 +112,7 @@ export const Dashboard: React.FC<{ onNavigate: (view: string) => void }> = ({ on
 
                 <button onClick={() => onNavigate('batch')} className="bg-slate-800 hover:bg-slate-700 text-white p-4 rounded-xl text-left transition-all border border-slate-700 hover:border-slate-600 group">
                     <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                        <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                     </div>
                     <div className="font-bold text-sm">Batch Create</div>
                     <div className="text-[10px] text-slate-400">Generate bulk assets</div>
@@ -107,7 +134,9 @@ export const Dashboard: React.FC<{ onNavigate: (view: string) => void }> = ({ on
             </div>
 
             <Card title="Recent Campaigns">
-                {recentCampaigns.length === 0 ? (
+                {isLoading ? (
+                    <div className="py-12 text-center text-slate-500 text-sm">Loading campaigns...</div>
+                ) : recentCampaigns.length === 0 ? (
                   <div className="text-center py-12 text-slate-500 text-sm border-2 border-dashed border-slate-800 rounded-lg">
                     No active campaigns. Launch your first one now.
                   </div>
