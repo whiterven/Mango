@@ -6,11 +6,14 @@ import { Button } from '../components/ui/Button';
 import { useCampaignStore } from '../store/CampaignContext';
 import { BrandProfile } from '../types';
 import { fileToBase64 } from '../services/geminiService';
+import { useToast } from '../store/ToastContext';
 
 export const BrandKit: React.FC = () => {
   const { brands, addBrand, deleteBrand } = useCampaignStore();
   const [isAdding, setIsAdding] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
+  const [isSaving, setIsSaving] = useState(false);
   
   const [newBrand, setNewBrand] = useState<Partial<BrandProfile>>({
       name: '', 
@@ -28,27 +31,37 @@ export const BrandKit: React.FC = () => {
         setNewBrand(prev => ({ ...prev, logo: `data:image/png;base64,${base64}` }));
       } catch (err) {
         console.error("Logo upload failed", err);
+        toast.error("Failed to upload logo");
       }
     }
   };
 
   const handleSave = async () => {
       if (!newBrand.name) return;
+      setIsSaving(true);
       
-      await addBrand({
-          id: crypto.randomUUID(),
-          ...newBrand as BrandProfile
-      });
-      
-      setIsAdding(false);
-      setNewBrand({ 
-          name: '', 
-          primaryColor: '#000000', 
-          secondaryColor: '#ffffff', 
-          font: 'Sans Serif', 
-          tone: 'Professional',
-          logo: '' 
-      });
+      try {
+        await addBrand({
+            id: crypto.randomUUID(),
+            ...newBrand as BrandProfile
+        });
+        
+        toast.success("Brand Kit saved successfully");
+        setIsAdding(false);
+        setNewBrand({ 
+            name: '', 
+            primaryColor: '#000000', 
+            secondaryColor: '#ffffff', 
+            font: 'Sans Serif', 
+            tone: 'Professional',
+            logo: '' 
+        });
+      } catch (e) {
+        console.error(e);
+        toast.error("Failed to save Brand Kit");
+      } finally {
+        setIsSaving(false);
+      }
   };
 
   return (
@@ -129,7 +142,7 @@ export const BrandKit: React.FC = () => {
                   </div>
               </div>
               <div className="flex justify-end pt-4 border-t border-slate-800">
-                  <Button onClick={handleSave} disabled={!newBrand.name}>Save Brand Kit</Button>
+                  <Button onClick={handleSave} disabled={!newBrand.name || isSaving} isLoading={isSaving}>Save Brand Kit</Button>
               </div>
           </Card>
       )}
@@ -146,7 +159,12 @@ export const BrandKit: React.FC = () => {
               {brands.map(brand => (
                   <Card key={brand.id} className="relative group hover:border-brand-500/30 transition-colors">
                       <button 
-                        onClick={() => deleteBrand(brand.id)}
+                        onClick={() => {
+                            if(confirm('Delete this brand kit?')) {
+                                deleteBrand(brand.id);
+                                toast.success("Brand kit deleted");
+                            }
+                        }}
                         className="absolute top-4 right-4 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-slate-900/50 rounded"
                         title="Delete Brand"
                       >
