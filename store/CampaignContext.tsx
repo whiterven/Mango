@@ -1,74 +1,113 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Campaign, BrandProfile, GeneratedImage, CompetitorEntry } from '../types';
-import { storageService } from '../services/storageService';
+import { Campaign, BrandProfile, CompetitorEntry } from '../types';
+import { campaignService } from '../services/db/campaignService';
+import { brandService } from '../services/db/brandService';
+import { creativeService } from '../services/db/creativeService';
+import { useAuth } from '../hooks/useAuth';
 
 interface CampaignContextType {
   campaigns: Campaign[];
   brands: BrandProfile[];
   competitors: CompetitorEntry[];
   currentCampaign: Campaign | null;
-  addCampaign: (campaign: Campaign) => void;
-  updateCampaign: (campaign: Campaign) => void;
+  isLoading: boolean;
+  addCampaign: (campaign: Campaign) => Promise<void>;
+  updateCampaign: (campaign: Campaign) => Promise<void>;
   setCurrentCampaign: (campaign: Campaign | null) => void;
-  addBrand: (brand: BrandProfile) => void;
-  deleteBrand: (id: string) => void;
-  addCompetitor: (competitor: CompetitorEntry) => void;
-  deleteCompetitor: (id: string) => void;
+  addBrand: (brand: BrandProfile) => Promise<void>;
+  deleteBrand: (id: string) => Promise<void>;
+  addCompetitor: (competitor: CompetitorEntry) => Promise<void>;
+  deleteCompetitor: (id: string) => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
 const CampaignContext = createContext<CampaignContextType | undefined>(undefined);
 
 export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [brands, setBrands] = useState<BrandProfile[]>([]);
   const [competitors, setCompetitors] = useState<CompetitorEntry[]>([]);
   const [currentCampaign, setCurrentCampaign] = useState<Campaign | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    setCampaigns(storageService.getCampaigns());
-    setBrands(storageService.getBrands());
-    setCompetitors(storageService.getCompetitors());
-  }, []);
-
-  const addCampaign = (campaign: Campaign) => {
-    const updated = [campaign, ...campaigns];
-    setCampaigns(updated);
-    storageService.saveCampaign(campaign);
-    setCurrentCampaign(campaign);
-  };
-
-  const updateCampaign = (campaign: Campaign) => {
-    const updated = campaigns.map(c => c.id === campaign.id ? campaign : c);
-    setCampaigns(updated);
-    storageService.saveCampaign(campaign);
-    if (currentCampaign?.id === campaign.id) {
-      setCurrentCampaign(campaign);
+  const refreshData = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const [camps, brs, comps] = await Promise.all([
+        campaignService.getCampaigns(user.id),
+        brandService.getBrands(user.id),
+        creativeService.getCompetitors(user.id)
+      ]);
+      setCampaigns(camps);
+      setBrands(brs);
+      setCompetitors(comps);
+    } catch (e) {
+      console.error("Failed to refresh data", e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const addBrand = (brand: BrandProfile) => {
-    const updated = [...brands, brand];
-    setBrands(updated);
-    storageService.saveBrand(brand);
+  useEffect(() => {
+    if (user) {
+      refreshData();
+    } else {
+      // Clear or load default offline data if no user (though useAuth mocks a user for offline)
+      setCampaigns([]);
+      setBrands([]);
+      setCompetitors([]);
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
+  const addCampaign = async (campaign: Campaign) => {
+    if (!user) return;
+    // Optimistic Update
+    setCampaigns(prev => [campaign, ...prev]);
+    setCurrentCampaign(campaign);
+    await campaignService.createCampaign(campaign, user.id);
   };
 
-  const deleteBrand = (id: string) => {
-    const updated = brands.filter(b => b.id !== id);
-    setBrands(updated);
-    storageService.deleteBrand(id);
+  const updateCampaign = async (campaign: Campaign) => {
+    if (!user) return;
+    setCampaigns(prev => prev.map(c => c.id === campaign.id ? campaign : c));
+    if (currentCampaign?.id === campaign.id) {
+      setCurrentCampaign(campaign);
+    }
+    await campaignService.updateCampaign(campaign, user.id);
   };
 
-  const addCompetitor = (competitor: CompetitorEntry) => {
-    const updated = [competitor, ...competitors];
-    setCompetitors(updated);
-    storageService.saveCompetitor(competitor);
+  const addBrand = async (brand: BrandProfile) => {
+    if (!user) return;
+    setBrands(prev => {
+        const idx = prev.findIndex(b => b.id === brand.id);
+        if (idx >= 0) {
+            const newBrands = [...prev];
+            newBrands[idx] = brand;
+            return newBrands;
+        }
+        return [...prev, brand];
+    });
+    await brandService.saveBrand(brand, user.id);
   };
 
-  const deleteCompetitor = (id: string) => {
-    const updated = competitors.filter(c => c.id !== id);
-    setCompetitors(updated);
-    storageService.deleteCompetitor(id);
+  const deleteBrand = async (id: string) => {
+    setBrands(prev => prev.filter(b => b.id !== id));
+    await brandService.deleteBrand(id);
+  };
+
+  const addCompetitor = async (competitor: CompetitorEntry) => {
+    if (!user) return;
+    setCompetitors(prev => [competitor, ...prev]);
+    await creativeService.saveCompetitor(competitor, user.id);
+  };
+
+  const deleteCompetitor = async (id: string) => {
+    setCompetitors(prev => prev.filter(c => c.id !== id));
+    await creativeService.deleteCompetitor(id);
   };
 
   return (
@@ -77,13 +116,15 @@ export const CampaignProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       brands, 
       competitors,
       currentCampaign, 
+      isLoading,
       addCampaign, 
       updateCampaign, 
       setCurrentCampaign, 
       addBrand, 
       deleteBrand,
       addCompetitor,
-      deleteCompetitor
+      deleteCompetitor,
+      refreshData
     }}>
       {children}
     </CampaignContext.Provider>

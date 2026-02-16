@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
+import { isSupabaseConnected, testSupabaseConnection } from '../lib/supabase';
 
 export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
   const [profile, setProfile] = useState({
@@ -12,11 +13,26 @@ export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onN
     company: 'Acme Corp'
   });
 
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'offline'>('checking');
   const [notifications, setNotifications] = useState({
     email: true,
     push: false,
     marketing: false
   });
+
+  useEffect(() => {
+    checkConnection();
+  }, []);
+
+  const checkConnection = async () => {
+    setDbStatus('checking');
+    if (!isSupabaseConnected()) {
+      setDbStatus('offline');
+      return;
+    }
+    const isLive = await testSupabaseConnection();
+    setDbStatus(isLive ? 'connected' : 'offline');
+  };
 
   const handleClearData = () => {
     if (confirm("Are you sure? This will delete all local campaigns and brands. This cannot be undone.")) {
@@ -34,6 +50,33 @@ export const Settings: React.FC<{ onNavigate: (view: string) => void }> = ({ onN
            </div>
            <Button variant="outline" onClick={() => onNavigate('dashboard')}>Back to Dashboard</Button>
        </div>
+
+       {/* System Status */}
+       <Card title="System Status">
+          <div className="flex items-center justify-between">
+             <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${dbStatus === 'connected' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500'}`}></div>
+                <div>
+                   <h4 className="text-sm font-bold text-white">Database Connection</h4>
+                   <p className="text-xs text-slate-500">
+                      {dbStatus === 'checking' ? 'Checking connection...' : 
+                       dbStatus === 'connected' ? 'Connected to Supabase Cloud' : 
+                       'Running in Offline Mode (Local Storage)'}
+                   </p>
+                </div>
+             </div>
+             {dbStatus === 'offline' && (
+               <div className="text-right">
+                 <Button size="sm" variant="outline" onClick={checkConnection}>Retry Connection</Button>
+               </div>
+             )}
+          </div>
+          {dbStatus === 'offline' && (
+             <div className="mt-4 p-3 bg-yellow-900/10 border border-yellow-900/30 rounded text-xs text-yellow-500">
+                ⚠️ Connect your Supabase project in the <code>.env</code> file to enable cloud sync and team collaboration.
+             </div>
+          )}
+       </Card>
 
        {/* Account & Profile */}
        <Card title="Account Profile">

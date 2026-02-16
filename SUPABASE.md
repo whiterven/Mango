@@ -19,7 +19,7 @@ Stores user identity and links to Supabase Auth.
 
 ```sql
 create table public.profiles (
-  id uuid references auth.users not null primary key,
+  id uuid references auth.users on delete cascade not null primary key,
   email text,
   full_name text,
   company_name text,
@@ -45,15 +45,16 @@ Stores brand identity data (colors, fonts, etc.).
 ```sql
 create table public.brands (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
   name text not null,
   primary_color text,
   secondary_color text,
   font text,
   tone text,
   logo_url text,
-  additional_guidelines text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+  guidelines text, -- Stores additional brand guidelines
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  deleted_at timestamp with time zone -- For soft deletes
 );
 
 alter table public.brands enable row level security;
@@ -68,7 +69,7 @@ Stores analyzed competitor ads and insights.
 ```sql
 create table public.competitors (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
   name text not null,
   analysis jsonb not null, -- Stores: visualStyle, detectedHook, weaknesses, opportunityAngle
   image_url text, -- Storage URL or Base64 (prefer URL for production)
@@ -87,7 +88,7 @@ The core entity storing briefs, strategy, and results.
 ```sql
 create table public.campaigns (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
   brand_id uuid references public.brands(id), -- Optional link
   name text not null,
   product_name text,
@@ -106,7 +107,8 @@ create table public.campaigns (
   ad_copy jsonb,
   
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  deleted_at timestamp with time zone
 );
 
 alter table public.campaigns enable row level security;
@@ -122,7 +124,7 @@ Stores the actual creative assets produced by the AI.
 create table public.generated_images (
   id uuid default uuid_generate_v4() primary key,
   campaign_id uuid references public.campaigns(id) on delete cascade not null,
-  user_id uuid references public.profiles(id) not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
   url text not null, -- Supabase Storage Public URL
   storage_path text, -- Internal path for management
   prompt text,
@@ -145,7 +147,7 @@ Stores scheduled ad events.
 ```sql
 create table public.scheduled_ads (
   id uuid default uuid_generate_v4() primary key,
-  user_id uuid references public.profiles(id) not null,
+  user_id uuid references public.profiles(id) on delete cascade not null,
   campaign_id uuid references public.campaigns(id) on delete cascade not null,
   platform text,
   scheduled_for timestamp with time zone not null,
@@ -163,7 +165,7 @@ Manages user quota.
 
 ```sql
 create table public.user_credits (
-  user_id uuid references public.profiles(id) primary key,
+  user_id uuid references public.profiles(id) on delete cascade primary key,
   total_credits int default 50,
   used_credits int default 0,
   plan_tier text default 'starter', -- 'starter', 'pro', 'agency'
@@ -174,6 +176,32 @@ create table public.user_credits (
 alter table public.user_credits enable row level security;
 
 create policy "Users can view own credits" on public.user_credits
+  for select using (auth.uid() = user_id);
+
+-- Only service role should update credits ideally, but for MVP we allow user update 
+-- In a real app, use a Database Function or Edge Function for credit deduction security
+create policy "Users can update own credits" on public.user_credits
+  for update using (auth.uid() = user_id);
+```
+
+### 2.8 Activity Logs
+Tracks user actions for the dashboard.
+
+```sql
+create table public.activity_logs (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  action text not null,
+  details jsonb,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.activity_logs enable row level security;
+
+create policy "Users can insert own activity" on public.activity_logs
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can view own activity" on public.activity_logs
   for select using (auth.uid() = user_id);
 ```
 
@@ -205,33 +233,39 @@ create trigger on_auth_user_created
 
 ## 4. Storage Configuration
 
-You need to create 3 public buckets in the Supabase Storage Dashboard:
-1. `campaign-assets`
-2. `brand-assets`
-3. `competitor-assets`
+You need to create 3 public buckets in the **Supabase Storage Dashboard**:
+1. `campaign-assets` (Public)
+2. `brand-assets` (Public)
+3. `competitor-assets` (Public)
 
 ### Storage Policies (SQL)
 
-Run this to allow authenticated users to upload and view files.
+Run this SQL to configure the permissions automatically if you haven't created them in the dashboard.
 
 ```sql
--- Insert buckets (If not using Dashboard)
+-- Insert buckets (Idempotent)
 insert into storage.buckets (id, name, public) values ('campaign-assets', 'campaign-assets', true) ON CONFLICT DO NOTHING;
 insert into storage.buckets (id, name, public) values ('brand-assets', 'brand-assets', true) ON CONFLICT DO NOTHING;
 insert into storage.buckets (id, name, public) values ('competitor-assets', 'competitor-assets', true) ON CONFLICT DO NOTHING;
 
--- Policy: Allow Uploads (Authenticated)
+-- Policy: Allow Uploads (Authenticated Users)
+-- Users can only upload to a folder named after their User ID
 create policy "Authenticated users can upload campaign assets"
 on storage.objects for insert to authenticated 
-with check (bucket_id = 'campaign-assets' AND auth.uid()::text = (storage.foldername(name))[1]);
+with check (bucket_id = 'campaign-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 create policy "Authenticated users can upload brand assets"
 on storage.objects for insert to authenticated 
-with check (bucket_id = 'brand-assets' AND auth.uid()::text = (storage.foldername(name))[1]);
+with check (bucket_id = 'brand-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 create policy "Authenticated users can upload competitor assets"
 on storage.objects for insert to authenticated 
-with check (bucket_id = 'competitor-assets' AND auth.uid()::text = (storage.foldername(name))[1]);
+with check (bucket_id = 'competitor-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Policy: Allow Deletes (Authenticated Users)
+create policy "Users can delete own campaign assets"
+on storage.objects for delete to authenticated
+using (bucket_id = 'campaign-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Policy: Allow Public Read Access
 create policy "Public access to assets"
@@ -239,9 +273,15 @@ on storage.objects for select to public
 using (bucket_id in ('campaign-assets', 'brand-assets', 'competitor-assets'));
 ```
 
-## 5. Notes regarding Client-Side Integration
+## 5. Deployment Checklist
 
-To connect this schema to the frontend:
-1. Install `@supabase/supabase-js`.
-2. Replace the `localStorage` logic in `store/CampaignContext.tsx` and services with Supabase calls.
-3. Ensure image uploads follow the path structure: `user_id/filename.ext` to satisfy the RLS policies defined above.
+1.  **Project**: Create a new project at [database.new](https://database.new).
+2.  **SQL**: Run all SQL scripts in Section 2, 3, and 4 in the **SQL Editor**.
+3.  **Environment**: 
+    *   Get `Project URL` and `anon public key` from **Project Settings > API**.
+    *   Add to `.env` file:
+        ```bash
+        VITE_SUPABASE_URL=your_project_url
+        VITE_SUPABASE_ANON_KEY=your_anon_key
+        ```
+4.  **Auth**: Ensure Email provider is enabled in **Authentication > Providers**.

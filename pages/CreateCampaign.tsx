@@ -13,7 +13,7 @@ import { directorAgent } from '../agents/directorAgent';
 import { imageAgent } from '../agents/imageAgent';
 import { scraperAgent } from '../agents/scraperAgent';
 import { copyAgent } from '../agents/copyAgent';
-import { Campaign, CampaignStatus, PlannerOutput, DirectorOutput, AspectRatio, BrandProfile, ImageSize, CreativeControls as CreativeControlsType, CompetitorAnalysis, SceneConfiguration, AdCopy, CompetitorEntry } from '../types';
+import { Campaign, CampaignStatus, PlannerOutput, DirectorOutput, AspectRatio, BrandProfile, ImageSize, CreativeControls as CreativeControlsType, CompetitorAnalysis, SceneConfiguration, AdCopy, CompetitorEntry, Platform } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { SuccessConfetti } from '../components/SuccessConfetti';
 import { useToast } from '../store/ToastContext';
@@ -35,7 +35,7 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
     description: '',
     audience: '',
     goal: 'Sales',
-    platform: 'Instagram',
+    platform: 'Instagram' as Platform,
     brandId: '',
     aspectRatio: '1:1' as AspectRatio,
     variationCount: 3,
@@ -233,6 +233,7 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
             id: crypto.randomUUID(),
             name: `${formData.productName} Campaign`,
             ...formData,
+            targetAudience: formData.audience,
             status: 'completed' as CampaignStatus,
             createdAt: Date.now(),
             plannerOutput: plannerResult,
@@ -324,7 +325,7 @@ export const CreateCampaign: React.FC<{ onComplete: () => void }> = ({ onComplet
                     <select 
                       className="w-full bg-slate-800 border border-slate-700/60 rounded-md px-3 py-2 text-sm text-white focus:ring-1 focus:ring-brand-500 outline-none"
                       value={formData.platform}
-                      onChange={e => setFormData({...formData, platform: e.target.value})}
+                      onChange={e => setFormData({...formData, platform: e.target.value as Platform})}
                     >
                       <option value="Facebook">Facebook</option>
                       <option value="Instagram">Instagram</option>

@@ -6,6 +6,7 @@ export type CampaignStatus = 'draft' | 'planning' | 'directing' | 'generating' |
 
 export interface BrandProfile {
   id: string;
+  userId?: string;
   name: string;
   primaryColor: string;
   secondaryColor: string;
@@ -13,8 +14,9 @@ export interface BrandProfile {
   fontStyle?: string;
   tone: string;
   website?: string;
-  logo?: string; // base64
+  logo?: string; 
   additionalGuidelines?: string;
+  createdAt?: number;
 }
 
 export interface CreativeControls {
@@ -41,10 +43,11 @@ export interface CompetitorAnalysis {
 
 export interface CompetitorEntry {
   id: string;
+  userId?: string;
   name: string;
   analysis: CompetitorAnalysis;
   createdAt: number;
-  imageUrl?: string; // Optional thumbnail/reference
+  imageUrl?: string; 
 }
 
 export interface AdCopy {
@@ -84,14 +87,18 @@ export interface DirectorOutput {
 
 export interface GeneratedImage {
   id: string;
+  campaignId?: string;
+  userId?: string;
   url: string; 
   prompt: string;
   aspectRatio: AspectRatio;
   createdAt: number;
+  storagePath?: string;
 }
 
 export interface Campaign {
   id: string;
+  userId?: string;
   name: string;
   productName: string;
   description: string;
@@ -101,11 +108,13 @@ export interface Campaign {
   brandProfileId?: string;
   status: CampaignStatus;
   createdAt: number;
+  updatedAt?: number;
   
   // Settings
   creativeControls?: CreativeControls;
   sceneConfiguration?: SceneConfiguration;
   competitorAnalysis?: CompetitorAnalysis;
+  aspectRatio?: AspectRatio;
   
   // Pipeline Data
   plannerOutput?: PlannerOutput;
