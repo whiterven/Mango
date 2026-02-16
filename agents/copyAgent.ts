@@ -1,3 +1,4 @@
+
 import { Type, Schema } from "@google/genai";
 import { getAiClient } from "../services/aiService";
 import { AdCopy, PlannerOutput } from "../types";
@@ -11,44 +12,56 @@ export const copyAgent = async (
   const ai = getAiClient();
 
   const systemInstruction = `
-    You are a World-Class Direct Response Copywriter (Ogilvy, Schwartz, Hopkins level).
-    Your goal is to write ad copy that stops the scroll and forces the click.
+    You are a **Legendary Direct Response Copywriter**.
+    You do not write "content". You write **Sales Copy**.
     
-    **PLATFORM RULES:**
-    - **Facebook/Instagram**:
-      - Primary Text: Use the "Hook-Story-Offer" framework. Use line breaks. Use emojis tastefully.
-      - Headline: Short, punchy, benefit-driven (max 40 chars).
-      - Tone: Conversational, authentic, slightly polarizing (if fits the angle).
+    ### 📢 PLATFORM RULES (STRICT)
     
-    - **LinkedIn**:
-      - Professional but personal. Focus on ROI, efficiency, and status.
-      - No "bro-marketing" fluff.
-    
-    **STRATEGY:**
-    - **Hook**: Use the planner's hook but make it readable.
-    - **Body**: Agitate the pain point, present the solution (product), provide social proof.
-    - **CTA**: Clear, imperative directive.
+    **FACEBOOK / INSTAGRAM FEED**:
+    - **Structure**: "Hook (1 line) -> Line Break -> Agitate Pain -> Solution -> Bullets -> CTA".
+    - **Tone**: Conversational, personal, slightly informal (like a friend recommending a product).
+    - **Emojis**: Use tastefully to break up text blocks.
+    - **Length**: Medium-Long (Storytelling works).
+
+    **INSTAGRAM STORY / TIKTOK CAPTION**:
+    - **Structure**: Extremely short. Punchy.
+    - **Tone**: Hype, urgent, or meme-style.
+    - **Length**: Under 150 characters ideal.
+
+    **LINKEDIN**:
+    - **Tone**: Professional, insight-driven, "Thought Leader".
+    - **Focus**: ROI, efficiency, career growth, business status.
+    - **No**: Slang, excessive emojis.
+
+    ### ✍️ COPYWRITING FORMULAS TO USE
+    1. **PAS**: Problem, Agitation, Solution.
+    2. **AIDA**: Attention, Interest, Desire, Action.
+    3. **FAB**: Features, Advantages, Benefits.
+
+    *Constraint*: The "Headline" must be under 40 characters to fit on mobile ad buttons.
   `;
 
   const prompt = `
-    **CAMPAIGN CONTEXT:**
-    - Product: ${productName}
-    - Target Audience: ${audience}
-    - Selected Platform: ${platform}
-    - Strategic Hook: "${plannerOutput.hook}"
-    - Psychological Angle: ${plannerOutput.angle}
-    - Emotional Goal: ${plannerOutput.emotion}
+    ### 📝 CAMPAIGN DATA
+    - **Product**: ${productName}
+    - **Audience**: ${audience}
+    - **Platform**: ${platform} (FORMAT FOR THIS SPECIFICALLY)
+    - **Strategic Hook**: "${plannerOutput.hook}"
+    - **Emotional Angle**: ${plannerOutput.emotion}
     
-    **TASK:**
-    Write a high-converting ad copy set for this specific campaign.
+    ### 🎯 TASK
+    Write the ad copy package.
+    1. **Headline**: The bold text near the button.
+    2. **Primary Text**: The main caption/body.
+    3. **CTA**: The specific button text (e.g., Shop Now, Learn More).
   `;
 
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
-      headline: { type: Type.STRING, description: "The bold headline that appears near the CTA button." },
-      primaryText: { type: Type.STRING, description: "The main body text (caption) of the ad." },
-      cta: { type: Type.STRING, description: "The button text (e.g., Shop Now, Learn More)." }
+      headline: { type: Type.STRING, description: "Bold, benefit-driven headline (max 40 chars)." },
+      primaryText: { type: Type.STRING, description: "The main body copy formatted with line breaks." },
+      cta: { type: Type.STRING, description: "Best performing standard CTA button text." }
     },
     required: ["headline", "primaryText", "cta"]
   };

@@ -1,3 +1,4 @@
+
 import { Type, Schema } from "@google/genai";
 import { getAiClient } from "../services/aiService";
 import { DirectorOutput, PlannerOutput, CreativeControls } from "../types";
@@ -12,79 +13,78 @@ export const directorAgent = async (
   const ai = getAiClient();
 
   const systemInstruction = `
-    You are a Technical Art Director and Prompt Engineering Specialist.
-    Your output is fed directly into a high-end AI image generator (Nano Banana Pro / Imagen 3).
+    You are a **Technical AI Art Director** and **Prompt Engineering Specialist** (Stable Diffusion/Midjourney/Imagen Expert).
     
-    **YOUR MANDATE:**
-    Translate abstract marketing concepts into **Technical Photography Directives**.
-    
-    **PHOTOGRAPHIC RULES (MUST USE):**
-    1. **Camera & Lens**: Specify the gear to define the look.
-       - *Portrait/Product*: "85mm f/1.8", "100mm Macro".
-       - *Lifestyle/Action*: "35mm f/2.8", "Wide Angle 24mm".
-    2. **Lighting Rigs**: 
-       - "Rembrandt Lighting" (Moody/Drama).
-       - "Softbox Diffused" (Beauty/Clean).
-       - "Neon Rim Light" (Tech/Edgy).
-       - "Golden Hour Backlit" (Warmth/Lifestyle).
-    3. **Film Stock/Texture**: 
-       - "Kodak Portra 400" (Natural grain).
-       - "Fujifilm Velvia" (High saturation).
-       - "Digital Sharp 8K" (Clean commercial).
-    
-    **PLATFORM OPTIMIZATION**:
-    - **${platform}**: Ensure the focal point is in the center 60% of the frame (safe zone). 
-    - High contrast is required to stand out on mobile screens.
+    ### 🔨 YOUR TOOLKIT
+    You translate abstract concepts into raw, render-ready technical prompts. You do not describe *why*, you describe *what* and *how*.
 
-    **VARIATION STRATEGY**:
-    - If ${variationCount} variations are requested, change the *Camera Angle* and *Lighting* for each.
+    ### 📸 PHOTOGRAPHIC & RENDER SYNTAX (MUST USE)
+    - **Lenses**: "85mm f/1.2" (Portrait), "24mm f/2.8" (Wide), "100mm Macro" (Detail), "Tilt-shift".
+    - **Lighting**: "Volumetric lighting", "God rays", "Rembrandt lighting", "Rim light", "Subsurface scattering", "Softbox", "Hard flash".
+    - **Film Stocks**: "Kodak Portra 400", "Fujifilm Velvia 50", "Cinestill 800T" (Halation).
+    - **Render Engines**: "Unreal Engine 5", "Octane Render", "Ray tracing", "Global Illumination".
+    - **Keywords for Quality**: "8k resolution", "hyper-detailed", "photorealistic", "award-winning photography", "sharp focus".
+
+    ### 📱 PLATFORM OPTIMIZATION: ${platform.toUpperCase()}
+    - **${platform === 'Instagram' || platform === 'TikTok' ? 'MOBILE VERTICAL' : 'DESKTOP/FEED'}**: 
+      - Keep the center 60% clear for text overlays. 
+      - Use "High Contrast" to stand out on small screens.
+      - Ensure the subject is clearly separated from the background (depth of field).
+
+    ### 🌀 VARIATION STRATEGY
+    If ${variationCount} variations are requested, you MUST shift the **Camera Angle** and **Lighting Setup** drastically between them.
+    - Variation 1: Hero Shot (Eye level, perfect lighting).
+    - Variation 2: Dynamic/Edgy (Low angle, harsh lighting or neon).
+    - Variation 3: Macro/Detail (Close up on texture/product).
   `;
 
-  let prompt = `
-    SOURCE CONCEPT:
-    - Visual: ${plannerOutput.visualConcept}
-    - Composition: ${plannerOutput.composition}
-    - Mood: ${plannerOutput.colorDirection}
-    - Emotion: ${plannerOutput.emotion}
-  `;
-
-  // Apply Creative Controls
+  let controlDirectives = "";
   if (creativeControls) {
-    prompt += `
-    \n🎛 **CREATIVE CONTROL SETTINGS (APPLY STRICTLY)**:
-    - Minimalism Level: ${creativeControls.minimalism}/100 (If >80: Negative space, clean lines. If <30: Complex, busy, detailed).
-    - Color Vibrancy: ${creativeControls.vibrancy}/100 (If >80: Neon, highly saturated, pop. If <30: Desaturated, pastel, matte).
-    - Lighting Drama: ${creativeControls.lightingDrama}/100 (If >80: High contrast, hard shadows. If <30: Flat, soft, diffuse).
-    - Vibe Mood: ${creativeControls.mood.toUpperCase()} (Adjust props and setting to match this).
+    controlDirectives = `
+    ### 🎛️ CREATIVE CONTROLS (STRICT ENFORCEMENT)
+    1. **Minimalism (${creativeControls.minimalism}%)**: 
+       ${creativeControls.minimalism > 70 ? "- FORCE: Negative space, solid backgrounds, single subject, clean lines." : ""}
+       ${creativeControls.minimalism < 30 ? "- FORCE: Maximalist, chaotic energy, many props, rich background textures." : ""}
+    
+    2. **Vibrancy (${creativeControls.vibrancy}%)**:
+       ${creativeControls.vibrancy > 70 ? "- FORCE: Neon, saturated, high dynamic range, punchy colors." : ""}
+       ${creativeControls.vibrancy < 30 ? "- FORCE: Desaturated, pastel, matte finish, muted tones." : ""}
+    
+    3. **Lighting Drama (${creativeControls.lightingDrama}%)**:
+       ${creativeControls.lightingDrama > 70 ? "- FORCE: Chiaroscuro, hard shadows, high contrast, moody, silhouette." : ""}
+       ${creativeControls.lightingDrama < 30 ? "- FORCE: High-key, soft diffused light, flat lighting, airy." : ""}
+    
+    4. **Mood**: "${creativeControls.mood.toUpperCase()}" -> Adjust props and setting to match this keyword perfectly.
     `;
   }
 
-  if (feedback) {
-    prompt += `
-    \n🚨 **REGENERATION INSTRUCTION (CRITICAL)**:
-    The client wants to adjust the previous result.
-    **FEEDBACK:** "${feedback}"
-    Apply this feedback aggressively to the new prompts.
-    `;
-  }
+  const prompt = `
+    ### 📥 SOURCE CONCEPT (FROM PLANNER)
+    - **Visual Scene**: ${plannerOutput.visualConcept}
+    - **Composition**: ${plannerOutput.composition}
+    - **Color Palette**: ${plannerOutput.colorDirection}
+    - **Emotion**: ${plannerOutput.emotion}
 
-  prompt += `
-    \nTASKS:
-    1. Refine the concept into a specific visual direction based on controls.
-    2. Write the "Champion Prompt" (Technical Prompt).
-    3. Generate ${variationCount} distinct prompt variations.
-    4. Predict performance score with reasoning.
+    ${controlDirectives}
+
+    ${feedback ? `### 🚨 REGENERATION INSTRUCTION: The user said: "${feedback}". IGNORE previous directions that conflict with this. PIVOT HARD.` : ""}
+
+    ### 📝 TASKS
+    1. **Improve the Concept**: Add technical details that make it "Pop".
+    2. **Master Prompt**: Write the definitive prompt for the image generator.
+    3. **Variations**: Generate ${variationCount} distinct prompt variations based on the strategy above.
+    4. **Score**: Predict the creative strength (0-100) based on visual impact.
   `;
 
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
-      improvedConcept: { type: Type.STRING, description: "Rationale for the visual direction." },
-      technicalPrompt: { type: Type.STRING, description: "The master prompt with all technical keywords." },
+      improvedConcept: { type: Type.STRING, description: "Your director's notes on how you refined the planner's idea." },
+      technicalPrompt: { type: Type.STRING, description: "The final, raw prompt string sent to the AI. Include all technical keywords." },
       generationPrompts: { 
           type: Type.ARRAY, 
           items: { type: Type.STRING },
-          description: `Exactly ${variationCount} prompts.`
+          description: `Exactly ${variationCount} distinct prompts. Variation 1 is the Master/Safe shot. Others should explore angles.`
       },
       creativeStrength: {
         type: Type.OBJECT,
@@ -93,7 +93,7 @@ export const directorAgent = async (
           clarity: { type: Type.NUMBER },
           conversion: { type: Type.NUMBER },
           overall: { type: Type.NUMBER },
-          reasoning: { type: Type.STRING, description: "Why this score? Explain the visual psychology." }
+          reasoning: { type: Type.STRING, description: "Why did you score it this way? Focus on visual psychology." }
         },
         required: ["overall", "attention", "clarity", "conversion", "reasoning"]
       },
@@ -102,8 +102,8 @@ export const directorAgent = async (
         items: {
           type: Type.OBJECT,
           properties: {
-            angle: { type: Type.STRING },
-            promptAdjustment: { type: Type.STRING }
+            angle: { type: Type.STRING, description: "e.g. Low Angle" },
+            promptAdjustment: { type: Type.STRING, description: "How this prompt differs from the master." }
           }
         }
       }

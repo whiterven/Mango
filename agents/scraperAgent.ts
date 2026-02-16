@@ -1,3 +1,4 @@
+
 import { Type, Schema } from "@google/genai";
 import { getAiClient } from "../services/aiService";
 import { BrandProfile } from "../types";
@@ -13,46 +14,45 @@ export const scraperAgent = async (url: string): Promise<ScraperOutput> => {
   const ai = getAiClient();
 
   const systemInstruction = `
-    You are an expert Brand Auditor and Marketing Intelligence Analyst. 
-    Your mission is to deconstruct a landing page to understand the "Soul" of the brand.
+    You are an **Expert Brand Strategist and Qualitative Data Analyst**.
     
-    Do not just extract text. Analyze the subtext.
-    
-    1. **Product DNA**: Identify not just what the product is, but the "Mechanism of Action" (how it works) and the "Big Promise" (the result).
-    2. **Audience Profiling**: Infer the psychographics. What keeps this customer up at night? What status signal are they looking for?
-    3. **Visual Identity**:
-       - Estimate specific Hex Codes for primary/secondary colors based on dominant visual elements.
-       - Classify the Typography (e.g., "Clean Minimalist Sans-Serif", "Luxury Serif", "Bold Brutalist").
-       - Define the Mood/Tone (e.g., "Clinical & Trustworthy", "High-Energy Hype", "Earthy & Organic").
-    
-    Your output must be precise, professional, and ready for a creative strategy team.
+    ### 🕵️ MISSION
+    Visit the provided URL and perform a "Brand DNA Extraction".
+    Do not just copy text. **Interpret the subtext**.
+
+    ### 🧬 ANALYSIS DIMENSIONS
+    1. **Brand Archetype**: Is it the Hero? The Outlaw? The Sage? The Jester?
+    2. **Visual Identity Decoding**:
+       - **Colors**: If you see mostly black/white/gold, infer "Luxury". If you see neon/gradients, infer "Tech/Gen-Z". 
+       - **Typography**: Serif = Traditional/Premium. Sans-Serif = Modern/Clean. Bold/Caps = Aggressive.
+    3. **The "Big Promise"**: What is the *transformation* they are selling? (e.g., "From tired to energetic", "From insecure to confident").
+    4. **Audience Psychographics**: Who is the *ideal* customer? What are their anxieties?
+
+    *Output Constraint*: Return estimated Hex codes for colors if exact ones aren't mentioned, based on the visual description found.
   `;
 
   const prompt = `
-    Perform a deep-dive audit of this URL: ${url}
+    URL TO ANALYZE: ${url}
 
-    Extract the following strategic assets:
-    - Product Name & Core Value Proposition.
-    - Deep Audience Psychographics (Who is this REALLY for?).
-    - A constructed Brand Identity Profile (Colors, Fonts, Tone).
-    
-    Return the data in the specified JSON format.
+    Extract the strategic assets. 
+    Be specific about the "Audience" - dig deep into their psychology (fears, desires), not just demographics.
+    Construct a Brand Profile that I can feed into a designer to replicate their style.
   `;
 
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
       productName: { type: Type.STRING },
-      description: { type: Type.STRING, description: "The core value prop and mechanism of action." },
-      audience: { type: Type.STRING, description: "Detailed psychographic profile of the target buyer." },
+      description: { type: Type.STRING, description: "The mechanism of action + the big result." },
+      audience: { type: Type.STRING, description: "Deep psychographic profile (Fears, Desires, Identity)." },
       brandProfile: {
         type: Type.OBJECT,
         properties: {
           name: { type: Type.STRING },
-          tone: { type: Type.STRING, description: "Adjectives describing the brand voice (e.g., Witty, Scientific, Luxurious)." },
-          primaryColor: { type: Type.STRING, description: "Estimated Hex Code" },
+          tone: { type: Type.STRING, description: "Adjectives defining the voice (e.g., 'Witty', 'Scientific')." },
+          primaryColor: { type: Type.STRING, description: "Estimated Hex Code (e.g., #FF0000)" },
           secondaryColor: { type: Type.STRING, description: "Estimated Hex Code" },
-          font: { type: Type.STRING, description: "Description of typography style" }
+          font: { type: Type.STRING, description: "Typography Style (e.g., 'Modern Geometric Sans')" }
         }
       }
     },

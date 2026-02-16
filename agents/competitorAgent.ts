@@ -1,3 +1,4 @@
+
 import { Type, Schema } from "@google/genai";
 import { getAiClient } from "../services/aiService";
 import { CompetitorAnalysis } from "../types";
@@ -12,18 +13,19 @@ export const competitorAgent = async (
   const ai = getAiClient();
 
   const systemInstruction = `
-    You are a Competitive Intelligence Strategist.
-    Your goal is to deconstruct competitor marketing to find "Gaps" we can exploit.
+    You are a **Competitive Intelligence Officer**.
+    Your job is to **reverse-engineer** competitor marketing to find cracks in their armor.
     
-    **ANALYSIS FRAMEWORK:**
-    1. **Visual/Brand Audit**: What is their aesthetic? (e.g., Corporate, UGC, Meme-style, Luxury).
-    2. **Hook Detection**: What is the core promise or "Big Idea" they are selling?
-    3. **Weakness Identification**: 
-       - Are they boring? 
-       - Is the copy too long? 
-       - Is the value prop unclear? 
-       - Do they lack social proof?
-    4. **The Pivot (Opportunity)**: How do we position AGAINST them? (e.g., "They are complex -> We are simple", "They are cheap -> We are premium").
+    ### 🕵️ ANALYSIS FRAMEWORK
+    1. **Visual/Brand Audit**: Identify their "Vibe". Is it Corporate? DTC Startup? dropshipper cheap? Luxury?
+    2. **Hook Detection**: What is the *single* big idea they are pushing? (e.g., "It's faster", "It's cheaper", "Status symbol").
+    3. **The 'Kill' Strategy (Gap Analysis)**:
+       - If they are **Cheap** -> We pivot to **Quality/Premium**.
+       - If they are **Complex** -> We pivot to **Simplicity**.
+       - If they are **Boring** -> We pivot to **Entertainment**.
+       - If they are **Generic** -> We pivot to **Specific Identity**.
+
+    *Constraint*: Be critical. Don't just describe. Judge.
   `;
 
   let prompt = "";
@@ -32,20 +34,23 @@ export const competitorAgent = async (
 
   if (inputType === 'url') {
     prompt = `
-      Analyze this competitor's landing page or ad url: ${input}
+      TARGET URL: ${input}
       
-      Use Google Search to understand their brand positioning if the URL is generic.
-      Extract their core hook, visual style, and find 3 critical weaknesses in their messaging or presentation.
-      Define a "Winning Angle" to beat them.
+      1. Scrape the landing page or ad destination.
+      2. Identify their Core Value Proposition.
+      3. Find 3 specific weaknesses in their copy, design, or offer structure.
+      4. Define a "Counter-Strategy" to beat them.
     `;
     contents = { role: "user", parts: [{ text: prompt }] };
     tools = [{ googleSearch: {} }];
   } else {
     prompt = `
-      Analyze this competitor ad image.
-      Deconstruct the visual hierarchy, the text overlay hook, and the overall vibe.
-      Identify 3 specific execution weaknesses.
-      Define a "Winning Angle" to beat this creative.
+      TARGET IMAGE: (See attachment)
+      
+      1. Deconstruct the visual hierarchy. What captures attention first?
+      2. Critique the aesthetic. Does it look professional? Amateur? 
+      3. Identify 3 weaknesses (e.g., "Text is hard to read", "Stock photo look", "Weak hook").
+      4. Define a "Winning Angle" to create a superior creative.
     `;
     contents = {
       role: "user",
@@ -61,8 +66,8 @@ export const competitorAgent = async (
     properties: {
       visualStyle: { type: Type.STRING, description: "Description of the competitor's aesthetic and tone." },
       detectedHook: { type: Type.STRING, description: "The core selling proposition or hook identified." },
-      weaknesses: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of 3 strategic or creative flaws." },
-      opportunityAngle: { type: Type.STRING, description: "The differentiation strategy to outperform them." }
+      weaknesses: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of 3 strategic or creative flaws to exploit." },
+      opportunityAngle: { type: Type.STRING, description: "The specific differentiation strategy to outperform them." }
     },
     required: ["visualStyle", "detectedHook", "weaknesses", "opportunityAngle"]
   };

@@ -1,3 +1,4 @@
+
 import { Type, Schema } from "@google/genai";
 import { getAiClient } from "../services/aiService";
 import { PlannerOutput, BrandProfile } from "../types";
@@ -13,78 +14,75 @@ export const plannerAgent = async (
 
   const brandContext = brand 
     ? `
-      STRICT BRAND GUIDELINES (MUST FOLLOW):
-      - Brand Tone: ${brand.tone}
-      - Primary Color: ${brand.primaryColor} (Use this as the visual anchor/dominant accent)
-      - Secondary Color: ${brand.secondaryColor}
-      - Typography Vibe: ${brand.font}
-      - Visual Rules: ${brand.additionalGuidelines || "Clean, high-end, professional."}
+      ### 🛡️ STRICT BRAND DNA (NON-NEGOTIABLE)
+      - **Archetype**: ${brand.tone}
+      - **Visual Anchor Color**: ${brand.primaryColor} (Must be the dominant accent)
+      - **Secondary Palette**: ${brand.secondaryColor}
+      - **Typography Vibe**: ${brand.font}
+      - **Specific Rules**: ${brand.additionalGuidelines || "Clean, high-end, commercial production value."}
       
-      You must weave these elements into the "Visual Concept" so the ad feels proprietary to the brand, not generic.
+      *Constraint*: The "Visual Concept" MUST explicitly describe how ${brand.primaryColor} is integrated into the scene (e.g., "Neon lighting in ${brand.primaryColor}", "Prop styling using ${brand.primaryColor} accents").
       ` 
-    : "No brand kit provided. Create a cohesive visual identity based on the product niche (e.g., Cyberpunk for gaming, Minimalist for skincare).";
+    : "### ⚪ GENERIC BRANDING\nNo specific brand kit provided. Adopt a 'Modern Minimalist' aesthetic suitable for high-conversion e-commerce.";
 
   // Inject viral patterns into context
-  const viralPatternContext = patterns.map(p => `- ${p.name}: ${p.description} (Example: ${p.example})`).join('\n');
+  const viralPatternContext = patterns.map(p => `- "${p.name}": ${p.description} (Use strictly if it fits the angle)`).join('\n');
 
   const systemInstruction = `
-    You are a Strategic Creative Director for high-performance paid social campaigns (Meta/TikTok).
-    Your goal is to engineer ads that optimize for **Conversion Rate (CVR)** and **Click-Through Rate (CTR)**.
-
-    **YOUR CORE FRAMEWORK:**
+    You are a **World-Class Creative Strategist** (ex-Ogilvy/Droga5) specializing in Direct Response Marketing for Social Media.
     
-    1. **Brand DNA Integration**: 
-       - Never create generic stock-photo style concepts. 
-       - If the brand is "Luxury", the lighting must be moody and low-key. 
-       - If the brand is "Playful", use high-key lighting and vibrant saturation.
-       - The provided Brand Colors must be explicitly mentioned in the visual description (e.g., "Background wall painted in brand teal #008080").
+    ### 🎯 OBJECTIVE
+    Synthesize a "Scroll-Stopping" ad concept that psychologically compels the target audience to stop scrolling and engage. 
+    You do not write generic ideas. You engineer **Conversion Mechanisms**.
 
-    2. **Competitor & Trend Analysis**:
-       - Assume the user's feed is saturated with competitors. 
-       - **Differentiation**: If the product is usually shown in a studio, put it in a chaotic lifestyle scene. If it's usually loud, go quiet and minimalist.
-       - **Pattern Interrupt**: Describe visual elements that break the grid (e.g., breaking the fourth wall, intense macro textures, surreal juxtaposition).
+    ### 🧠 CORE THINKING FRAMEWORK (JOBS-TO-BE-DONE)
+    1. **The Trigger**: What specific moment/pain causes the user to need this?
+    2. **The Gap**: Why do current solutions fail them?
+    3. **The Payoff**: What is the *status* or *feeling* they buy (not just the product)?
 
-    3. **Direct Response Psychology**:
-       - The **Hook** must target a "Bleeding Neck" problem or a "Status" desire.
-       - The **Angle** must be specific (e.g., "The Us vs. Them", "The Instant Fix", "The Social Proof").
+    ### 🎨 VISUAL STRATEGY RULES
+    - **No "Stock Photo" Vibes**: If the concept sounds like a generic stock image, reject it.
+    - **Visual Viscerality**: Describe textures, lighting, and depth. Users must "feel" the image.
+    - **Pattern Interrupt**: The concept must include one element that is slightly odd, out of place, or hyper-stylized to break the feed's visual monotony.
 
-    4. **Viral Pattern Injection**:
-       - You have access to a database of proven high-converting visual patterns.
-       - Use these patterns if they fit the product.
-    
-    **AVAILABLE VIRAL PATTERNS:**
+    ### 📚 VIRAL PATTERN DATABASE
     ${viralPatternContext}
 
-    **OUTPUT RULES**:
-    - "Visual Concept": Describe the scene cinematically. Include lighting, texture, and depth.
-    - "Hook": Max 8 words. Punchy. No fluff.
+    ### 📝 OUTPUT SCHEMA REQUIREMENTS
+    - **Hook**: Maximum 8 words. Must be punchy, provocative, or curiosity-inducing. No "Welcome to..." or "Buy our...".
+    - **Visual Concept**: A cinematic description meant for an Art Director. Include lighting (e.g. "Rembrandt", "Hard Flash"), setting, and subject action.
+    - **Color Direction**: Explicit instruction on how to grade the colors.
   `;
 
   const prompt = `
-    CLIENT BRIEF:
-    Product: ${product}
-    Value Prop: ${description}
-    Target Audience: ${audience}
+    ### 📋 CAMPAIGN BRIEF
+    - **Product/Offer**: ${product}
+    - **Value Proposition**: ${description}
+    - **Target Persona**: ${audience} (Analyze their deepest fears and desires before generating)
 
     ${brandContext}
 
-    Develop a conversion-optimized ad concept.
-    Focus on a "Scroll-Stopping" visual that a user creates a visceral reaction to.
+    ### ⚡ MISSION
+    Develop ONE high-impact ad concept. 
+    1. Analyze the persona's "Bleeding Neck" problem.
+    2. Select the most effective psychological angle (e.g., Status, FOMO, Laziness, Revenge).
+    3. Construct a visual scene that tells this story instantly without text.
+    4. Write the text overlay hook that anchors the visual.
   `;
 
   const schema: Schema = {
     type: Type.OBJECT,
     properties: {
-      hook: { type: Type.STRING, description: "The text overlay hook (max 8 words)." },
-      angle: { type: Type.STRING, description: "The psychological angle used." },
-      emotion: { type: Type.STRING, description: "The primary emotion triggered (e.g., FOMO, Relief)." },
-      visualConcept: { type: Type.STRING, description: "Detailed cinematic description of the scene, lighting, and brand color integration." },
-      composition: { type: Type.STRING, description: "Specific composition rule (e.g., Golden Ratio, Center Symmetrical, Dutch Angle)." },
-      colorDirection: { type: Type.STRING, description: "How the brand colors and lighting mood are applied." },
-      textOverlayIdeas: { type: Type.ARRAY, items: { type: Type.STRING } },
-      ctaIdeas: { type: Type.ARRAY, items: { type: Type.STRING } }
+      hook: { type: Type.STRING, description: "The text overlay string. Max 8 words. High impact." },
+      angle: { type: Type.STRING, description: "The specific psychological trigger used (e.g., 'Status Signaling', 'Negative Visualization')." },
+      emotion: { type: Type.STRING, description: "The primary emotion triggered (e.g., Anxiety, Relief, Greed)." },
+      visualConcept: { type: Type.STRING, description: "Detailed, cinematic directive for the art director. Include lighting, lens choice, and scene composition." },
+      composition: { type: Type.STRING, description: "Technical composition rule (e.g., 'Center Symmetrical', 'Rule of Thirds', 'Dutch Angle')." },
+      colorDirection: { type: Type.STRING, description: "Specific color grading instructions matching the Brand DNA." },
+      textOverlayIdeas: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 alternative short text hooks." },
+      ctaIdeas: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 button/action text options." }
     },
-    required: ["hook", "angle", "visualConcept", "composition", "colorDirection"]
+    required: ["hook", "angle", "emotion", "visualConcept", "composition", "colorDirection"]
   };
 
   const response = await ai.models.generateContent({

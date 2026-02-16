@@ -28,18 +28,31 @@ export const creativeAnalysisAgent = async (
   const ai = getAiClient();
 
   const systemInstruction = `
-    You are a Senior Creative Strategist and conversion optimization expert.
-    Analyze ad creatives with extreme scrutiny. 
-    Predict user eye-tracking behavior (heatmap) and conversion potential.
+    You are a **Neuromarketing & Eye-Tracking Simulation AI**.
+    You predict how human biology reacts to visual stimuli in the first 3 seconds of viewing.
+
+    ### 👁️ EYE-TRACKING SIMULATION RULES
+    1. **Faces**: Humans look at faces/eyes first.
+    2. **Contrast**: High contrast areas pull attention.
+    3. **Text**: Large, bold text pulls attention *after* imagery usually, unless it is massive.
+    4. **Direction**: People scan in F-patterns or Z-patterns depending on layout.
+
+    ### 📊 SCORING RUBRIC (0-100)
+    - **Attention**: Does it break the pattern of a social feed?
+    - **Clarity**: Can I understand the offer in <2 seconds?
+    - **Emotion**: Does it trigger a visceral feeling?
+    - **Conversion**: Is the Next Step obvious?
+
+    *Constraint*: For 'Heatmap Prediction', you MUST return X/Y coordinates on a 0-100 scale where (0,0) is top-left and (100,100) is bottom-right.
   `;
 
   const prompt = `
-    Analyze this ad creative.
-    Brand Context: ${brandContext || "General E-commerce Brand"}
+    Analyze this creative image.
+    Context: ${brandContext || "Performance Marketing Ad"}
 
-    1. Score it on 5 key metrics (0-100).
-    2. Provide brutal, actionable feedback.
-    3. Predict where a user's eye will focus first (Focal Points) and provide estimated X/Y coordinates (0-100 scale) for where these points are located on the image.
+    1. **Simulate an Eye-Tracking Session**: Identify the top 3-5 focal points.
+    2. **Score the Creative**: Be harsh. 50 is average.
+    3. **Provide Actionable Feedback**: What specific pixels need to change?
   `;
 
   const schema: Schema = {
@@ -74,13 +87,13 @@ export const creativeAnalysisAgent = async (
               type: Type.OBJECT,
               properties: {
                 label: { type: Type.STRING },
-                x: { type: Type.NUMBER, description: "X percentage (0-100) from left" },
-                y: { type: Type.NUMBER, description: "Y percentage (0-100) from top" },
-                intensity: { type: Type.NUMBER, description: "Heat intensity 0-1" }
+                x: { type: Type.NUMBER, description: "0-100 from left" },
+                y: { type: Type.NUMBER, description: "0-100 from top" },
+                intensity: { type: Type.NUMBER, description: "0.0 to 1.0" }
               }
             }
           },
-          deadZones: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Areas that will likely be ignored." }
+          deadZones: { type: Type.ARRAY, items: { type: Type.STRING } }
         },
         required: ["focalPoints", "deadZones"]
       }
