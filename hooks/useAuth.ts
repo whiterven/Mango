@@ -3,19 +3,6 @@ import { useState, useEffect } from 'react';
 import { getSupabaseClient } from '../lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
 
-// Consistent mock user for offline mode
-const MOCK_USER: User = {
-  id: 'offline-user-123',
-  email: 'demo@usemango.ai',
-  aud: 'authenticated',
-  role: 'authenticated',
-  created_at: new Date().toISOString(),
-  app_metadata: { provider: 'email' },
-  user_metadata: { full_name: 'Demo User' },
-  confirmed_at: new Date().toISOString(),
-  last_sign_in_at: new Date().toISOString(),
-} as User;
-
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -25,17 +12,11 @@ export const useAuth = () => {
   useEffect(() => {
     const initAuth = async () => {
       if (!supabase) {
-        // Offline Mode Logic
-        // Check if we were "logged in" previously in offline mode
-        const offlineAuth = localStorage.getItem('mango_offline_auth');
-        if (offlineAuth === 'true') {
-          setUser(MOCK_USER);
-        }
+        console.error("Supabase client not initialized. Auth unavailable.");
         setLoading(false);
         return;
       }
 
-      // Online Mode
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         setSession(initialSession);
@@ -58,23 +39,14 @@ export const useAuth = () => {
   }, [supabase]);
 
   const signIn = async (email: string) => {
-    if (supabase) {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) throw error;
-    } else {
-      // Simulate Login
-      localStorage.setItem('mango_offline_auth', 'true');
-      setUser(MOCK_USER);
-    }
+    if (!supabase) throw new Error("Auth unavailable");
+    const { error } = await supabase.auth.signInWithOtp({ email });
+    if (error) throw error;
   };
 
   const signOut = async () => {
-    if (supabase) {
-      await supabase.auth.signOut();
-    } else {
-      localStorage.removeItem('mango_offline_auth');
-      setUser(null);
-    }
+    if (!supabase) return;
+    await supabase.auth.signOut();
   };
 
   return { user, session, loading, signIn, signOut, isOffline: !supabase };

@@ -12,7 +12,7 @@ interface LightPillarProps {
   pillarWidth?: number;
   pillarHeight?: number;
   noiseIntensity?: number;
-  mixBlendMode?: React.CSSProperties['mixBlendMode'];
+  mixBlendMode?: string;
   pillarRotation?: number;
   quality?: 'low' | 'medium' | 'high';
 }
@@ -408,7 +408,7 @@ export const LightPillar: React.FC<LightPillarProps> = ({
     return (
       <div
         className={`w-full h-full absolute top-0 left-0 flex items-center justify-center bg-black/10 text-gray-500 text-sm ${className}`}
-        style={{ mixBlendMode }}
+        style={{ mixBlendMode: mixBlendMode as any }}
       >
         WebGL not supported
       </div>
@@ -416,6 +416,6 @@ export const LightPillar: React.FC<LightPillarProps> = ({
   }
 
   return (
-    <div ref={containerRef} className={`w-full h-full absolute top-0 left-0 ${className}`} style={{ mixBlendMode }} />
+    <div ref={containerRef} className={`w-full h-full absolute top-0 left-0 ${className}`} style={{ mixBlendMode: mixBlendMode as any }} />
   );
 };

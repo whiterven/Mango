@@ -4,21 +4,34 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { teamService, TeamMember } from '../services/teamService';
+import { useAuth } from '../hooks/useAuth';
 
 export const Workspace: React.FC<{ onNavigate: (view: string) => void }> = ({ onNavigate }) => {
+  const { user } = useAuth();
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
 
-  useEffect(() => {
-    setTeam(teamService.getTeam());
-  }, []);
+  const loadTeam = async () => {
+      if (!user) return;
+      const members = await teamService.getTeam(user.id);
+      setTeam(members);
+  };
 
-  const handleInvite = () => {
-    if (inviteEmail) {
-      teamService.inviteMember(inviteEmail, 'editor');
-      setTeam(teamService.getTeam());
+  useEffect(() => {
+    loadTeam();
+  }, [user]);
+
+  const handleInvite = async () => {
+    if (inviteEmail && user) {
+      await teamService.inviteMember(inviteEmail, 'editor', user.id);
+      await loadTeam();
       setInviteEmail('');
     }
+  };
+
+  const handleRemove = async (id: string) => {
+      await teamService.removeMember(id);
+      await loadTeam();
   };
 
   return (
@@ -64,10 +77,7 @@ export const Workspace: React.FC<{ onNavigate: (view: string) => void }> = ({ on
                 </span>
                 {member.role !== 'owner' && (
                   <button 
-                    onClick={() => {
-                        teamService.removeMember(member.id);
-                        setTeam(teamService.getTeam());
-                    }}
+                    onClick={() => handleRemove(member.id)}
                     className="text-red-400 text-xs hover:underline"
                   >
                     Remove
@@ -76,6 +86,9 @@ export const Workspace: React.FC<{ onNavigate: (view: string) => void }> = ({ on
               </div>
             </div>
           ))}
+          {team.length === 0 && (
+              <p className="text-slate-500 text-sm text-center py-4">No team members invited yet.</p>
+          )}
         </div>
       </Card>
     </div>

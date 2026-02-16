@@ -6,8 +6,10 @@ import { schedulerService, ScheduledItem } from '../services/schedulerService';
 import { taskService } from '../services/taskService';
 import { useCampaignStore } from '../store/CampaignContext';
 import { Task } from '../types';
+import { useAuth } from '../hooks/useAuth';
 
 export const Scheduler: React.FC = () => {
+  const { user } = useAuth();
   const { campaigns } = useCampaignStore();
   const [scheduled, setScheduled] = useState<ScheduledItem[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -15,11 +17,19 @@ export const Scheduler: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
 
+  const loadData = async () => {
+      if (!user) return;
+      const [sched, t] = await Promise.all([
+          schedulerService.getScheduledAds(user.id),
+          taskService.getTasks(user.id)
+      ]);
+      setScheduled(sched);
+      setTasks(t.filter(task => task.dueDate && !task.completed));
+  };
+
   useEffect(() => {
-    setScheduled(schedulerService.getScheduledAds());
-    // Only show incomplete tasks on the calendar
-    setTasks(taskService.getTasks().filter(t => t.dueDate && !t.completed));
-  }, []);
+    loadData();
+  }, [user]);
 
   // Calendar Logic
   const year = currentDate.getFullYear();
@@ -39,20 +49,20 @@ export const Scheduler: React.FC = () => {
       setSelectedDate(date);
   };
 
-  const handleSchedule = () => {
-      if (!selectedDate || !selectedCampaignId) return;
+  const handleSchedule = async () => {
+      if (!selectedDate || !selectedCampaignId || !user) return;
       
       const campaign = campaigns.find(c => c.id === selectedCampaignId);
       if (campaign) {
-          schedulerService.scheduleCampaign(campaign, selectedDate);
-          setScheduled(schedulerService.getScheduledAds());
+          await schedulerService.scheduleCampaign(campaign, selectedDate, user.id);
+          await loadData();
           setSelectedCampaignId('');
       }
   };
 
-  const handleUnschedule = (id: string) => {
-      schedulerService.unschedule(id);
-      setScheduled(schedulerService.getScheduledAds());
+  const handleUnschedule = async (id: string) => {
+      await schedulerService.unschedule(id);
+      await loadData();
   };
 
   const getEventsForDay = (day: number) => {

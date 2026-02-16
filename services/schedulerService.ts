@@ -1,7 +1,6 @@
 
+import { getSupabaseClient } from '../lib/supabase';
 import { Campaign } from "../types";
-
-const KEY = 'mango_scheduled';
 
 export interface ScheduledItem {
   id: string;
@@ -12,33 +11,71 @@ export interface ScheduledItem {
 }
 
 export const schedulerService = {
-  scheduleCampaign: (campaign: Campaign, date: Date): ScheduledItem => {
-    const items = schedulerService.getScheduledAds();
-    const newItem: ScheduledItem = {
-        id: crypto.randomUUID(),
-        campaignId: campaign.id,
-        campaignName: campaign.name,
-        scheduledFor: date.toISOString(),
-        platform: campaign.platform
+  scheduleCampaign: async (campaign: Campaign, date: Date, userId: string): Promise<ScheduledItem | null> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    const payload = {
+        user_id: userId,
+        campaign_id: campaign.id,
+        platform: campaign.platform,
+        scheduled_for: date.toISOString()
     };
-    items.push(newItem);
-    // Sort by date
-    items.sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime());
-    localStorage.setItem(KEY, JSON.stringify(items));
-    return newItem;
+
+    const { data, error } = await supabase
+        .from('scheduled_ads')
+        .insert(payload)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Scheduling failed", error);
+        return null;
+    }
+
+    return {
+        id: data.id,
+        campaignId: data.campaign_id,
+        campaignName: campaign.name,
+        scheduledFor: data.scheduled_for,
+        platform: data.platform
+    };
   },
 
-  getScheduledAds: (): ScheduledItem[] => {
-    try {
-      const data = localStorage.getItem(KEY);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
+  getScheduledAds: async (userId: string): Promise<ScheduledItem[]> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+
+    // Join with campaigns to get the name
+    const { data, error } = await supabase
+        .from('scheduled_ads')
+        .select(`
+            id,
+            campaign_id,
+            scheduled_for,
+            platform,
+            campaigns (name)
+        `)
+        .eq('user_id', userId)
+        .order('scheduled_for', { ascending: true });
+
+    if (error) {
+        console.error("Fetch scheduled ads failed", error);
+        return [];
     }
+
+    return data.map((item: any) => ({
+        id: item.id,
+        campaignId: item.campaign_id,
+        campaignName: item.campaigns?.name || 'Unknown Campaign',
+        scheduledFor: item.scheduled_for,
+        platform: item.platform
+    }));
   },
   
-  unschedule: (id: string) => {
-    const items = schedulerService.getScheduledAds().filter(i => i.id !== id);
-    localStorage.setItem(KEY, JSON.stringify(items));
+  unschedule: async (id: string): Promise<void> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    await supabase.from('scheduled_ads').delete().eq('id', id);
   }
 };

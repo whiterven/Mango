@@ -18,7 +18,7 @@ const getEnv = (key: string) => {
 
 // Use provided credentials as default fallback
 const supabaseUrl = getEnv('VITE_SUPABASE_URL') || 'https://ryzbiptghbiejqbzorfc.supabase.co';
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || 'sb_publishable_KbRLPSR__som_DPUXM60SQ_FXTyvH21';
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5emJpcHRnaGJpZWpxYnpvcmZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEyNzgyODMsImV4cCI6MjA4Njg1NDI4M30.omoroeGxqGpupwJv2l12uHeOoYv8odjCMB8prBi3JSc';
 
 let supabaseInstance: SupabaseClient | null = null;
 

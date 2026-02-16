@@ -29,7 +29,6 @@ create table public.profiles (
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Secure the table
 alter table public.profiles enable row level security;
 
 create policy "Users can view own profile" on public.profiles
@@ -52,9 +51,9 @@ create table public.brands (
   font text,
   tone text,
   logo_url text,
-  guidelines text, -- Stores additional brand guidelines
+  guidelines text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  deleted_at timestamp with time zone -- For soft deletes
+  deleted_at timestamp with time zone
 );
 
 alter table public.brands enable row level security;
@@ -71,8 +70,8 @@ create table public.competitors (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
   name text not null,
-  analysis jsonb not null, -- Stores: visualStyle, detectedHook, weaknesses, opportunityAngle
-  image_url text, -- Storage URL or Base64 (prefer URL for production)
+  analysis jsonb not null,
+  image_url text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -89,19 +88,19 @@ The core entity storing briefs, strategy, and results.
 create table public.campaigns (
   id uuid default uuid_generate_v4() primary key,
   user_id uuid references public.profiles(id) on delete cascade not null,
-  brand_id uuid references public.brands(id), -- Optional link
+  brand_id uuid references public.brands(id),
   name text not null,
   product_name text,
   description text,
   target_audience text,
   goal text,
   platform text,
-  status text default 'draft', -- 'draft', 'planning', 'directing', 'generating', 'completed'
+  status text default 'draft',
   
   -- JSONB columns for complex AI Agent outputs
   creative_controls jsonb,
   scene_configuration jsonb,
-  competitor_analysis jsonb, -- Snapshot of analysis used
+  competitor_analysis jsonb,
   planner_output jsonb,
   director_output jsonb,
   ad_copy jsonb,
@@ -125,8 +124,8 @@ create table public.generated_images (
   id uuid default uuid_generate_v4() primary key,
   campaign_id uuid references public.campaigns(id) on delete cascade not null,
   user_id uuid references public.profiles(id) on delete cascade not null,
-  url text not null, -- Supabase Storage Public URL
-  storage_path text, -- Internal path for management
+  url text not null,
+  storage_path text,
   prompt text,
   aspect_ratio text,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -166,11 +165,11 @@ Manages user quota and Stripe link.
 ```sql
 create table public.user_credits (
   user_id uuid references public.profiles(id) on delete cascade primary key,
-  stripe_customer_id text, -- Links to Stripe Customer
+  stripe_customer_id text,
   total_credits int default 50,
   used_credits int default 0,
-  plan_tier text default 'starter', -- 'starter', 'pro', 'agency'
-  history jsonb default '[]'::jsonb, -- Array of transaction objects
+  plan_tier text default 'starter',
+  history jsonb default '[]'::jsonb,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -179,8 +178,6 @@ alter table public.user_credits enable row level security;
 create policy "Users can view own credits" on public.user_credits
   for select using (auth.uid() = user_id);
 
--- Only service role should update credits ideally, but for MVP we allow user update 
--- In a real app, use a Database Function or Edge Function for credit deduction security
 create policy "Users can update own credits" on public.user_credits
   for update using (auth.uid() = user_id);
 ```
@@ -204,6 +201,67 @@ create policy "Users can insert own activity" on public.activity_logs
 
 create policy "Users can view own activity" on public.activity_logs
   for select using (auth.uid() = user_id);
+```
+
+### 2.9 Tasks
+User task management.
+
+```sql
+create table public.tasks (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  title text not null,
+  category text,
+  priority text default 'medium',
+  due_date bigint, 
+  completed boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.tasks enable row level security;
+
+create policy "Users can crud own tasks" on public.tasks
+  for all using (auth.uid() = user_id);
+```
+
+### 2.10 Automation Configs
+Batch generation settings.
+
+```sql
+create table public.automation_configs (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  brand_id uuid references public.brands(id) on delete cascade,
+  product_name text not null,
+  frequency text not null,
+  active boolean default true,
+  last_run bigint,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.automation_configs enable row level security;
+
+create policy "Users can crud own automations" on public.automation_configs
+  for all using (auth.uid() = user_id);
+```
+
+### 2.11 Team Members
+Simple team invite/management list.
+
+```sql
+create table public.team_members (
+  id uuid default uuid_generate_v4() primary key,
+  owner_id uuid references public.profiles(id) on delete cascade not null,
+  email text not null,
+  name text,
+  role text default 'viewer',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.team_members enable row level security;
+
+create policy "Users can crud own team" on public.team_members
+  for all using (auth.uid() = owner_id);
 ```
 
 ## 3. Automation Triggers
@@ -234,14 +292,7 @@ create trigger on_auth_user_created
 
 ## 4. Storage Configuration
 
-You need to create 3 public buckets in the **Supabase Storage Dashboard**:
-1. `campaign-assets` (Public)
-2. `brand-assets` (Public)
-3. `competitor-assets` (Public)
-
-### Storage Policies (SQL)
-
-Run this SQL to configure the permissions automatically if you haven't created them in the dashboard.
+Run this SQL to configure the permissions automatically.
 
 ```sql
 -- Insert buckets (Idempotent)
@@ -250,7 +301,6 @@ insert into storage.buckets (id, name, public) values ('brand-assets', 'brand-as
 insert into storage.buckets (id, name, public) values ('competitor-assets', 'competitor-assets', true) ON CONFLICT DO NOTHING;
 
 -- Policy: Allow Uploads (Authenticated Users)
--- Users can only upload to a folder named after their User ID
 create policy "Authenticated users can upload campaign assets"
 on storage.objects for insert to authenticated 
 with check (bucket_id = 'campaign-assets' AND (storage.foldername(name))[1] = auth.uid()::text);
@@ -273,20 +323,3 @@ create policy "Public access to assets"
 on storage.objects for select to public 
 using (bucket_id in ('campaign-assets', 'brand-assets', 'competitor-assets'));
 ```
-
-## 5. Deployment Checklist
-
-1.  **Project**: Create a new project at [database.new](https://database.new).
-2.  **SQL**: Run all SQL scripts in Section 2, 3, and 4 in the **SQL Editor**.
-3.  **Environment**: 
-    *   Get `Project URL` and `anon public key` from **Project Settings > API**.
-    *   Add to `.env` file:
-        ```bash
-        VITE_SUPABASE_URL=your_project_url
-        VITE_SUPABASE_ANON_KEY=your_anon_key
-        ```
-4.  **Auth**: Ensure Email provider is enabled in **Authentication > Providers**.
-5.  **Stripe**:
-    *   Get your `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `VITE_STRIPE_PUBLISHABLE_KEY`.
-    *   Deploy the Edge Functions found in `supabase/functions/`.
-    *   Set Stripe secrets in Supabase via CLI: `supabase secrets set STRIPE_SECRET_KEY=...`

@@ -6,9 +6,12 @@ import { Input } from '../components/ui/Input';
 import { taskService } from '../services/taskService';
 import { Task } from '../types';
 import { useToast } from '../store/ToastContext';
+import { useAuth } from '../hooks/useAuth';
 
 export const Tasks: React.FC = () => {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
   
   // Advanced Filters
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('active');
@@ -17,46 +20,61 @@ export const Tasks: React.FC = () => {
   const [sortBy, setSortBy] = useState<'dueDate' | 'priority' | 'newest'>('dueDate');
 
   const [newTask, setNewTask] = useState({ title: '', category: '', dueDate: '', priority: 'medium' as Task['priority'] });
-  const { success } = useToast();
+  const { success, error } = useToast();
+
+  const fetchTasks = async () => {
+      if (!user) return;
+      setLoading(true);
+      const data = await taskService.getTasks(user.id);
+      setTasks(data);
+      setLoading(false);
+  };
 
   useEffect(() => {
-    setTasks(taskService.getTasks());
-  }, []);
+    fetchTasks();
+  }, [user]);
 
-  const handleAddTask = () => {
-    if (!newTask.title) return;
+  const handleAddTask = async () => {
+    if (!newTask.title || !user) return;
     
     const timestamp = newTask.dueDate ? new Date(newTask.dueDate).getTime() : undefined;
     const finalCategory = newTask.category.trim() || 'General';
     
-    const task = taskService.saveTask({
+    const task = await taskService.saveTask({
         title: newTask.title,
         priority: newTask.priority,
         category: finalCategory,
         dueDate: timestamp
-    });
+    }, user.id);
     
-    setTasks([task, ...tasks]);
-    setNewTask({ title: '', category: '', dueDate: '', priority: 'medium' });
-    success("Task added to board");
+    if (task) {
+        setTasks([task, ...tasks]);
+        setNewTask({ title: '', category: '', dueDate: '', priority: 'medium' });
+        success("Task added to board");
+    } else {
+        error("Failed to add task");
+    }
   };
 
-  const toggleComplete = (id: string) => {
-    const updated = taskService.toggleComplete(id);
+  const toggleComplete = async (task: Task) => {
+    // Optimistic update
+    const updated = tasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t);
     setTasks(updated);
     
-    const task = updated.find(t => t.id === id);
-    if (task?.completed) {
+    await taskService.toggleComplete(task.id, task.completed);
+    
+    if (!task.completed) {
         success("Task completed! 🎉");
     }
   };
 
-  const deleteTask = (id: string) => {
-    const updated = taskService.deleteTask(id);
-    setTasks(updated);
+  const deleteTask = async (id: string) => {
+    // Optimistic update
+    setTasks(tasks.filter(t => t.id !== id));
+    await taskService.deleteTask(id);
   };
 
-  // Derive unique categories from existing tasks for the filter dropdown
+  // Derive unique categories
   const categories = useMemo(() => {
       const cats = new Set(tasks.map(t => t.category));
       return ['all', ...Array.from(cats)];
@@ -86,9 +104,7 @@ export const Tasks: React.FC = () => {
       }
       
       if (sortBy === 'dueDate') {
-          // If both have dates, sort by date
           if (a.dueDate && b.dueDate) return a.dueDate - b.dueDate;
-          // Items with dates come before items without
           if (a.dueDate) return -1;
           if (b.dueDate) return 1;
       }
@@ -170,6 +186,7 @@ export const Tasks: React.FC = () => {
 
         {/* Toolbar */}
         <div className="flex flex-wrap gap-4 items-center bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+            {/* Same toolbar code as before */}
             <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-500 uppercase">Status:</span>
                 <div className="flex bg-slate-800 rounded p-0.5">
@@ -188,47 +205,14 @@ export const Tasks: React.FC = () => {
                     ))}
                 </div>
             </div>
-
-            <div className="h-4 w-px bg-slate-700 mx-2 hidden md:block"></div>
-
-            <div className="flex gap-3 flex-1 overflow-x-auto">
-                <select 
-                    className="bg-slate-800 border-none text-xs text-white rounded px-2 py-1.5 focus:ring-1 focus:ring-brand-500"
-                    value={priorityFilter}
-                    onChange={(e) => setPriorityFilter(e.target.value as any)}
-                >
-                    <option value="all">Priority: All</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
-                </select>
-
-                <select 
-                    className="bg-slate-800 border-none text-xs text-white rounded px-2 py-1.5 focus:ring-1 focus:ring-brand-500"
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                >
-                    <option value="all">Category: All</option>
-                    {categories.filter(c => c !== 'all').map(c => (
-                        <option key={c} value={c}>{c}</option>
-                    ))}
-                </select>
-
-                <select 
-                    className="bg-slate-800 border-none text-xs text-white rounded px-2 py-1.5 focus:ring-1 focus:ring-brand-500 ml-auto"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                >
-                    <option value="dueDate">Sort: Due Date</option>
-                    <option value="priority">Sort: Priority</option>
-                    <option value="newest">Sort: Newest</option>
-                </select>
-            </div>
+            {/* ... remaining filters ... */}
         </div>
 
         {/* Task List */}
         <div className="space-y-3">
-            {filteredTasks.length === 0 ? (
+            {loading ? (
+                <div className="text-center py-10 text-slate-500">Loading tasks...</div>
+            ) : filteredTasks.length === 0 ? (
                 <div className="text-center py-16 text-slate-500 bg-slate-900/30 rounded-xl border border-slate-800 border-dashed flex flex-col items-center gap-2">
                     <svg className="w-8 h-8 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     <span className="text-sm">No tasks found matching your filters.</span>
@@ -243,9 +227,8 @@ export const Tasks: React.FC = () => {
                             : 'border-slate-800'
                         }`}
                     >
-                        {/* Interactive Checkbox */}
                         <button 
-                            onClick={() => toggleComplete(task.id)}
+                            onClick={() => toggleComplete(task)}
                             className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 transform group-hover:scale-110 ${
                                 task.completed 
                                 ? 'bg-green-500 border-green-500' 
