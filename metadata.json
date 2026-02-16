@@ -1,0 +1,5 @@
+{
+  "name": "Mango - Conversion Optimized Ad Generator",
+  "description": "A multi-agent AI system that generates high-converting Facebook and Instagram ad creatives using Gemini 3 Pro and Nano Banana Pro models.",
+  "requestFramePermissions": []
+}
