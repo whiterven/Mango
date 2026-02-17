@@ -284,9 +284,9 @@ export const CreateCampaign: React.FC<{ onComplete: () => void; onNavigate: (vie
       {showConfetti && <SuccessConfetti />}
       
       <AgentPipeline steps={[
-        { id: '1', label: 'Brief', status: step === 1 && !loading ? 'active' : step > 1 ? 'completed' : 'pending', agent: 'Planner' },
-        { id: '2', label: 'Strategy', status: (step === 2 && !loading) || (step === 1 && loading) ? 'active' : step > 2 ? 'completed' : 'pending', agent: 'Director' },
-        { id: '3', label: 'Production', status: (step === 3 && !loading) || (step === 2 && loading) ? 'active' : step > 3 ? 'completed' : 'pending', agent: 'Generator' },
+        { id: '1', label: 'Brief', status: step === 1 ? 'active' : step > 1 ? 'completed' : 'pending', agent: 'Planner' },
+        { id: '2', label: 'Strategy', status: step === 2 ? 'active' : step > 2 ? 'completed' : 'pending', agent: 'Director' },
+        { id: '3', label: 'Production', status: step === 3 ? 'active' : step > 3 ? 'completed' : 'pending', agent: 'Generator' },
       ]} />
 
       {/* Step 1: Input & Planner */}

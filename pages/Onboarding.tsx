@@ -4,11 +4,15 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useCampaignStore } from '../store/CampaignContext';
 import { fileToBase64 } from '../services/geminiService';
+import { useAuth } from '../hooks/useAuth';
+import { Campaign } from '../types';
 
 export const Onboarding: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
-  const { addBrand } = useCampaignStore();
+  const { addBrand, addCampaign } = useCampaignStore();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
   const [data, setData] = useState({
     brandName: '',
     industry: '',
@@ -31,20 +35,53 @@ export const Onboarding: React.FC<{ onComplete: () => void }> = ({ onComplete })
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 3) {
-      // Save initial brand
-      addBrand({
-        id: crypto.randomUUID(),
-        name: data.brandName,
-        primaryColor: data.primaryColor,
-        secondaryColor: '#ffffff',
-        font: 'Sans Serif',
-        tone: 'Professional',
-        logo: data.logo,
-        additionalGuidelines: `Industry: ${data.industry}`
-      });
-      onComplete();
+      if (!user) {
+          console.error("No user found during onboarding save.");
+          return;
+      }
+      
+      setIsSaving(true);
+      try {
+          const brandId = crypto.randomUUID();
+          
+          // 1. Save Brand
+          await addBrand({
+            id: brandId,
+            name: data.brandName,
+            primaryColor: data.primaryColor,
+            secondaryColor: '#ffffff',
+            font: 'Sans Serif',
+            tone: 'Professional',
+            logo: data.logo,
+            additionalGuidelines: `Industry: ${data.industry}`
+          });
+
+          // 2. Create First Draft Campaign (so product name & goal aren't lost)
+          if (data.productName) {
+              const newCampaign: Campaign = {
+                  id: crypto.randomUUID(),
+                  name: `${data.productName} Launch`,
+                  productName: data.productName,
+                  description: `Initial campaign for ${data.productName}`,
+                  targetAudience: 'General Audience', 
+                  goal: data.goal,
+                  platform: 'Instagram',
+                  brandProfileId: brandId,
+                  status: 'draft',
+                  createdAt: Date.now(),
+                  images: []
+              };
+              await addCampaign(newCampaign);
+          }
+
+          onComplete();
+      } catch (e) {
+          console.error("Onboarding save failed", e);
+      } finally {
+          setIsSaving(false);
+      }
     } else {
       setStep(step + 1);
     }
@@ -173,7 +210,7 @@ export const Onboarding: React.FC<{ onComplete: () => void }> = ({ onComplete })
             </div>
           )}
 
-          <Button onClick={handleNext} className="w-full py-3" disabled={step === 1 && !data.brandName}>
+          <Button onClick={handleNext} className="w-full py-3" disabled={(step === 1 && !data.brandName) || isSaving} isLoading={isSaving}>
             {step === 3 ? "Launch Workspace" : "Continue"}
           </Button>
         </div>

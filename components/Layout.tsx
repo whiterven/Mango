@@ -11,6 +11,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeView, apiKeyReady, onRequestKey }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   // Grouped Navigation
   const navGroups = [
@@ -19,8 +20,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeV
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
         { id: 'create', label: 'Campaign Builder', icon: 'M12 4v16m8-8H4' },
+        { id: 'competitor', label: 'Competitor Spy', icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z' },
         { id: 'batch', label: 'Batch Generator', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' },
-        { id: 'tasks', label: 'Tasks & Todo', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
       ]
     },
     {
@@ -63,37 +64,46 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeV
       )}
 
       {/* Sidebar */}
-      <aside className={`fixed md:static inset-y-0 left-0 w-60 bg-slate-900 border-r border-slate-800 flex flex-col z-30 transform transition-transform duration-300 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-      }`}>
-        <div className="hidden md:flex p-5 border-b border-slate-800 items-center gap-2.5 mb-2">
-          <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-yellow-500 rounded-md flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20 text-base">M</div>
-          <span className="font-bold text-lg tracking-tight text-white">Mango</span>
-          <span className="text-[9px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700 ml-auto">PRO</span>
+      <aside className={`fixed md:static inset-y-0 left-0 bg-slate-900 border-r border-slate-800 flex flex-col z-30 transform transition-all duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0 w-60' : '-translate-x-full md:translate-x-0'
+      } ${collapsed ? 'md:w-20' : 'md:w-64'}`}>
+        
+        {/* Sidebar Header */}
+        <div className={`hidden md:flex p-5 border-b border-slate-800 items-center mb-2 ${collapsed ? 'justify-center' : 'gap-2.5'}`}>
+          <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-yellow-500 rounded-md flex items-center justify-center font-bold text-white shadow-lg shadow-brand-500/20 text-base flex-shrink-0">M</div>
+          {!collapsed && (
+            <>
+              <span className="font-bold text-lg tracking-tight text-white whitespace-nowrap">Mango</span>
+              <span className="text-[9px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400 border border-slate-700 ml-auto">PRO</span>
+            </>
+          )}
         </div>
 
-        <nav className="flex-1 p-3 space-y-6 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-6 overflow-y-auto overflow-x-hidden">
           {navGroups.map((group, idx) => (
              <div key={idx}>
-                <h3 className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">{group.title}</h3>
+                {!collapsed && (
+                  <h3 className="px-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 animate-in fade-in duration-300">{group.title}</h3>
+                )}
                 <div className="space-y-0.5">
                     {group.items.map((item) => (
                         <button
                         key={item.id}
+                        title={collapsed ? item.label : undefined}
                         onClick={() => {
                             onChangeView(item.id);
                             setSidebarOpen(false);
                         }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all ${
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all group ${
                             currentView === item.id 
                             ? 'bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-sm' 
                             : 'text-slate-400 hover:bg-slate-800 hover:text-white border border-transparent'
-                        }`}
+                        } ${collapsed ? 'justify-center' : ''}`}
                         >
-                        <svg className={`w-4 h-4 ${currentView === item.id ? 'text-brand-500' : 'text-slate-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className={`w-4 h-4 flex-shrink-0 ${currentView === item.id ? 'text-brand-500' : 'text-slate-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
                         </svg>
-                        <span className="font-medium text-xs">{item.label}</span>
+                        {!collapsed && <span className="font-medium text-xs whitespace-nowrap">{item.label}</span>}
                         </button>
                     ))}
                 </div>
@@ -101,34 +111,45 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentView, onChangeV
           ))}
         </nav>
 
-        {/* User / Settings Footer (No Connected Button) */}
-        <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+        {/* Collapse Toggle */}
+        <div className="hidden md:block px-3 pb-2 pt-2 border-t border-slate-800/50">
+            <button 
+                onClick={() => setCollapsed(!collapsed)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-500 hover:bg-slate-800 hover:text-white transition-all group ${collapsed ? 'justify-center' : ''}`}
+                title={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+                <svg className={`w-4 h-4 flex-shrink-0 transition-transform duration-300 ${collapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+                {!collapsed && <span className="font-medium text-xs whitespace-nowrap">Collapse</span>}
+            </button>
+        </div>
+
+        {/* User Footer */}
+        <div className={`p-4 border-t border-slate-800 bg-slate-900/50 ${collapsed ? 'flex justify-center' : ''}`}>
             <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300">
+                <div className="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0">
                    MK
                 </div>
-                <div>
-                    <p className="text-xs font-bold text-white">Marketing Team</p>
-                    <p className="text-[10px] text-slate-500">Enterprise Plan</p>
-                </div>
+                {!collapsed && (
+                  <div className="overflow-hidden">
+                      <p className="text-xs font-bold text-white truncate">Marketing Team</p>
+                      <p className="text-[10px] text-slate-500 truncate">Enterprise Plan</p>
+                  </div>
+                )}
             </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-6 overflow-y-auto w-full md:ml-0 bg-[#0b1120]">
+      <main className="flex-1 p-4 md:p-6 overflow-y-auto w-full bg-[#0b1120] transition-all duration-300">
         <header className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-lg md:text-xl font-bold text-white capitalize tracking-tight">{currentView.replace('-', ' ')}</h1>
             <p className="text-slate-500 text-xs">Enterprise Ad Generation Platform</p>
           </div>
           <div className="flex items-center gap-3">
-             <button 
-                onClick={onRequestKey} 
-                className={`text-xs px-3 py-1.5 rounded border transition-colors ${apiKeyReady ? 'border-green-900 bg-green-900/10 text-green-500' : 'border-red-900 bg-red-900/10 text-red-500'}`}
-             >
-                 {apiKeyReady ? '● System Online' : '● API Key Required'}
-             </button>
+             {/* System Online Removed */}
           </div>
         </header>
         {children}

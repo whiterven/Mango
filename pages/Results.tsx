@@ -3,12 +3,14 @@ import React, { useState } from 'react';
 import { useCampaignStore } from '../store/CampaignContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Badge } from '../components/ui/Badge';
 import { PerformanceScore } from '../components/PerformanceScore';
 import { CopyPanel } from '../components/CopyPanel';
 import { directorAgent } from '../agents/directorAgent';
 import { imageAgent } from '../agents/imageAgent';
 import { AspectRatio } from '../types';
 import { useToast } from '../store/ToastContext';
+import { exportService } from '../services/exportService';
 
 interface ResultsProps {
   campaignId: string;
@@ -23,7 +25,7 @@ export const Results: React.FC<ResultsProps> = ({ campaignId, onNavigate }) => {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const toast = useToast();
 
-  if (!campaign) return <div>Campaign not found</div>;
+  if (!campaign) return <div className="p-8 text-center text-slate-500">Campaign not found</div>;
 
   const handleRegenerate = async (feedback: string) => {
       setShowRegenMenu(false);
@@ -71,137 +73,213 @@ export const Results: React.FC<ResultsProps> = ({ campaignId, onNavigate }) => {
   };
 
   const handleExport = (platform: string) => {
-      toast.info(`Preparing ${platform} package zip download... (Simulated)`);
+      exportService.downloadPackage(campaign.name, campaign.images);
       setShowExportMenu(false);
   };
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex justify-between items-center mb-6 relative">
+    <div className="max-w-[1600px] mx-auto pb-20">
+      
+      {/* 1. Header Section */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div className="flex items-center gap-4">
-              <Button variant="secondary" size="sm" onClick={() => onNavigate('dashboard')} className="flex items-center gap-1">
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                  Back
-              </Button>
+              <button 
+                onClick={() => onNavigate('dashboard')} 
+                className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white hover:border-slate-500 transition-all group"
+              >
+                  <svg className="w-5 h-5 transform group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+              </button>
               <div>
-                  <h2 className="text-xl font-bold text-white">{campaign.name}</h2>
-                  <p className="text-slate-500 text-xs">Generated on {new Date(campaign.createdAt).toLocaleDateString()}</p>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-white tracking-tight">{campaign.name}</h1>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${campaign.platform === 'Instagram' ? 'bg-pink-500/10 text-pink-400 border-pink-500/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                        {campaign.platform}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1 text-xs text-slate-500 font-medium">
+                      <span>Created {new Date(campaign.createdAt).toLocaleDateString()}</span>
+                      <span>•</span>
+                      <span>{campaign.images.length} Variations</span>
+                  </div>
               </div>
           </div>
-          <div className="flex gap-2 relative">
+
+          <div className="flex items-center gap-3 relative">
               <div className="relative">
-                  <Button variant="outline" size="sm" onClick={() => setShowRegenMenu(!showRegenMenu)} isLoading={isRegenerating}>
+                  <Button variant="outline" onClick={() => setShowRegenMenu(!showRegenMenu)} isLoading={isRegenerating}>
                       ✨ Regenerate
                   </Button>
                   {showRegenMenu && (
-                      <div className="absolute top-full right-0 mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
-                          <div className="p-2 text-[10px] text-slate-500 font-bold uppercase bg-slate-900/50 border-b border-slate-700">Select Direction</div>
-                          <button onClick={() => handleRegenerate("Make it more Luxurious & Minimalist")} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-xs text-white border-b border-slate-700/50">💎 More Luxury</button>
-                          <button onClick={() => handleRegenerate("Make it more Urgent & High Contrast")} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-xs text-white border-b border-slate-700/50">🔥 More Urgency</button>
-                          <button onClick={() => handleRegenerate("Try a completely different camera angle")} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-xs text-white border-b border-slate-700/50">📸 Different Angle</button>
-                          <button onClick={() => handleRegenerate("Make it darker and moody")} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-xs text-white">🌙 Dark & Moody</button>
+                      <div className="absolute top-full right-0 mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-20 overflow-hidden ring-1 ring-white/10">
+                          <div className="p-3 text-[10px] text-slate-500 font-bold uppercase bg-slate-950/50 border-b border-slate-800">Select Direction</div>
+                          <button onClick={() => handleRegenerate("Make it more Luxurious & Minimalist")} className="w-full text-left px-4 py-3 hover:bg-slate-800 text-xs text-white border-b border-slate-800/50 transition-colors">💎 More Luxury</button>
+                          <button onClick={() => handleRegenerate("Make it more Urgent & High Contrast")} className="w-full text-left px-4 py-3 hover:bg-slate-800 text-xs text-white border-b border-slate-800/50 transition-colors">🔥 More Urgency</button>
+                          <button onClick={() => handleRegenerate("Try a completely different camera angle")} className="w-full text-left px-4 py-3 hover:bg-slate-800 text-xs text-white border-b border-slate-800/50 transition-colors">📸 Different Angle</button>
+                          <button onClick={() => handleRegenerate("Make it darker and moody")} className="w-full text-left px-4 py-3 hover:bg-slate-800 text-xs text-white transition-colors">🌙 Dark & Moody</button>
                       </div>
                   )}
               </div>
               
               <div className="relative">
-                  <Button size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>Download Package</Button>
+                  <Button onClick={() => setShowExportMenu(!showExportMenu)}>Download Package</Button>
                   {showExportMenu && (
-                      <div className="absolute top-full right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
-                          <div className="p-2 text-[10px] text-slate-500 font-bold uppercase bg-slate-900/50 border-b border-slate-700">Export All Assets</div>
-                          <button onClick={() => handleExport('Facebook')} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-xs text-white flex items-center justify-between border-b border-slate-700/50">
+                      <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-20 overflow-hidden ring-1 ring-white/10">
+                          <div className="p-3 text-[10px] text-slate-500 font-bold uppercase bg-slate-950/50 border-b border-slate-800">Export All Assets</div>
+                          <button onClick={() => handleExport('Facebook')} className="w-full text-left px-4 py-3 hover:bg-slate-800 text-xs text-white flex items-center justify-between border-b border-slate-800/50 transition-colors">
                               <span>Facebook Ads (1:1)</span>
-                              <span className="text-[10px] text-slate-500">ZIP</span>
+                              <span className="text-[10px] text-slate-500 font-mono">ZIP</span>
                           </button>
-                          <button onClick={() => handleExport('Instagram')} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-xs text-white flex items-center justify-between border-b border-slate-700/50">
+                          <button onClick={() => handleExport('Instagram')} className="w-full text-left px-4 py-3 hover:bg-slate-800 text-xs text-white flex items-center justify-between border-b border-slate-800/50 transition-colors">
                               <span>Instagram Story (9:16)</span>
-                              <span className="text-[10px] text-slate-500">ZIP</span>
+                              <span className="text-[10px] text-slate-500 font-mono">ZIP</span>
                           </button>
-                          <button onClick={() => handleExport('TikTok')} className="w-full text-left px-3 py-2 hover:bg-slate-700 text-xs text-white flex items-center justify-between">
+                          <button onClick={() => handleExport('TikTok')} className="w-full text-left px-4 py-3 hover:bg-slate-800 text-xs text-white flex items-center justify-between transition-colors">
                               <span>TikTok Video (MP4)</span>
-                              <span className="text-[10px] text-slate-500">PRO</span>
+                              <span className="text-[10px] text-slate-500 font-mono">PRO</span>
                           </button>
                       </div>
                   )}
               </div>
           </div>
-      </div>
+      </header>
 
-      <div className="flex flex-col lg:flex-row gap-6">
-          {/* Main Visuals - Grid Layout for Variations */}
-          <div className="flex-1">
-               <h3 className="text-sm font-bold mb-3 flex items-center gap-2 text-slate-300">
-                 Generated Variations
-                 <span className="text-[10px] bg-brand-900/50 text-brand-300 px-1.5 py-0.5 rounded-full">{campaign.images.length}</span>
-               </h3>
-               
-               {isRegenerating && (
-                   <div className="mb-4 p-4 bg-slate-800/50 border border-brand-500/30 rounded-lg flex items-center justify-center gap-3 animate-pulse">
-                       <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                       <span className="text-brand-400 text-xs font-medium">Creative Director is refining the concept...</span>
-                   </div>
-               )}
-
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {campaign.images.map((img, idx) => (
-                      <div key={img.id} className="bg-slate-800/30 rounded-lg border border-slate-700/50 p-2 hover:border-brand-500/30 transition-colors group">
-                          <div className="relative aspect-auto bg-black rounded overflow-hidden mb-2">
-                              <img src={img.url} className="w-full h-auto object-contain" alt={`Variation ${idx + 1}`} />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                  <a href={img.url} download className="bg-white/90 hover:bg-white text-black text-[10px] font-bold py-1.5 px-3 rounded-full shadow-lg">Download PNG</a>
+      {/* 2. Main Layout Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+          
+          {/* Left Column: Visual Assets (8 cols) */}
+          <div className="xl:col-span-8 space-y-10">
+              
+              {/* Generated Variations */}
+              <section>
+                  <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                          Visual Assets
+                          <span className="bg-slate-800 text-slate-400 text-xs px-2 py-1 rounded-full">{campaign.images.length}</span>
+                      </h2>
+                      {isRegenerating && (
+                          <div className="flex items-center gap-2 text-xs text-brand-400 bg-brand-900/20 px-3 py-1.5 rounded-full border border-brand-500/30 animate-pulse">
+                              <div className="w-2 h-2 bg-brand-500 rounded-full"></div>
+                              Rendering new variant...
+                          </div>
+                      )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {campaign.images.map((img, idx) => (
+                          <div key={img.id} className="group relative bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-sm hover:shadow-2xl hover:border-brand-500/50 transition-all duration-300">
+                              {/* Image Display */}
+                              <div className={`relative w-full bg-black/50 ${img.aspectRatio === '9:16' ? 'aspect-[9/16]' : 'aspect-square'}`}>
+                                  <img src={img.url} className="w-full h-full object-contain" alt="Ad Creative" />
+                                  
+                                  {/* Hover Actions Overlay */}
+                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 backdrop-blur-[2px]">
+                                      <Button size="sm" onClick={() => exportService.downloadImage(img)}>
+                                          <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                          Download PNG
+                                      </Button>
+                                      <Button size="sm" variant="secondary" onClick={() => { navigator.clipboard.writeText(img.url); toast.success("Link copied!"); }}>
+                                          Copy Link
+                                      </Button>
+                                  </div>
+                                  
+                                  {/* Info Badges */}
+                                  <div className="absolute top-4 left-4 flex gap-2">
+                                      <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 shadow-lg">
+                                          Var {campaign.images.length - idx}
+                                      </span>
+                                      <span className="bg-black/60 backdrop-blur-md text-slate-300 text-[10px] font-mono px-2 py-1 rounded border border-white/10 shadow-lg">
+                                          {img.aspectRatio}
+                                      </span>
+                                  </div>
+                              </div>
+                              
+                              {/* Footer */}
+                              <div className="p-4 border-t border-slate-800 bg-slate-950/30">
+                                  <p className="text-[10px] text-slate-500 font-mono line-clamp-2 leading-relaxed" title={img.prompt}>
+                                      <span className="text-slate-600 font-bold mr-2">PROMPT:</span>{img.prompt}
+                                  </p>
                               </div>
                           </div>
-                          <div className="flex justify-between items-center px-1">
-                             <span className="text-[10px] font-mono text-slate-500">
-                                 {idx === 0 && isRegenerating ? 'Generating...' : `Var ${campaign.images.length - idx}`}
-                             </span>
-                             <span className="text-[10px] text-brand-400 border border-brand-900/50 bg-brand-900/20 px-1.5 py-0.5 rounded">{img.aspectRatio}</span>
+                      ))}
+                  </div>
+              </section>
+
+              {/* Strategy & Intel Cards */}
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card title="Strategy Blueprint" className="h-full bg-slate-900/50">
+                      <div className="space-y-5">
+                          <div className="bg-slate-950/50 p-3 rounded border border-slate-800">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Primary Hook</label>
+                              <p className="text-sm font-medium text-white italic">"{campaign.plannerOutput?.hook}"</p>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Psychology</label>
+                                  <Badge color="blue">{campaign.plannerOutput?.angle}</Badge>
+                              </div>
+                              <div>
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Emotion</label>
+                                  <Badge color="brand">{campaign.plannerOutput?.emotion}</Badge>
+                              </div>
+                          </div>
+                          
+                          <div>
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Visual Directive</label>
+                              <p className="text-xs text-slate-400 leading-relaxed">{campaign.plannerOutput?.visualConcept}</p>
                           </div>
                       </div>
-                  ))}
-               </div>
+                  </Card>
+
+                  {campaign.competitorAnalysis && (
+                      <Card title="Competitor Intel" className="h-full border-red-900/20 bg-red-900/5">
+                          <div className="space-y-5">
+                              <div>
+                                  <label className="text-[9px] font-bold text-red-400 uppercase tracking-wider block mb-2">Exploited Weakness</label>
+                                  <div className="bg-red-900/10 p-2 rounded border border-red-900/20">
+                                      <p className="text-xs text-red-200">{campaign.competitorAnalysis.weaknesses[0]}</p>
+                                  </div>
+                              </div>
+                              
+                              <div className="relative pt-4">
+                                  <div className="absolute top-0 left-0 w-full border-t border-dashed border-red-900/30"></div>
+                                  <label className="text-[9px] font-bold text-green-400 uppercase tracking-wider block mb-2">Our Counter-Strategy</label>
+                                  <p className="text-xs text-slate-300 leading-relaxed">{campaign.competitorAnalysis.opportunityAngle}</p>
+                              </div>
+                          </div>
+                      </Card>
+                  )}
+              </section>
           </div>
 
-          {/* Details Sidebar */}
-          <div className="w-full lg:w-80 space-y-4 flex-shrink-0">
+          {/* Right Column: Copy & Score (Sticky) */}
+          <div className="xl:col-span-4 space-y-6 xl:sticky xl:top-6">
+              
+              {/* Performance Score */}
               {campaign.directorOutput && (
                   <PerformanceScore score={campaign.directorOutput.creativeStrength} />
               )}
 
-              {/* Generated Copy Panel */}
+              {/* Ad Copy */}
               <CopyPanel copy={campaign.adCopy} />
 
-              <Card title="Strategy Recap">
+              {/* Quick Actions */}
+              <Card className="bg-slate-900 border-slate-800">
+                  <h4 className="text-xs font-bold text-slate-400 uppercase mb-4">Quick Actions</h4>
                   <div className="space-y-3">
-                      <div className="bg-slate-900/50 p-2.5 rounded border border-slate-700/50">
-                          <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-1">Primary Hook</h4>
-                          <p className="text-white text-sm font-medium italic">"{campaign.plannerOutput?.hook}"</p>
-                      </div>
-                      
-                      <div>
-                         <h4 className="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Visual Angle</h4>
-                         <p className="text-xs text-slate-400">{campaign.plannerOutput?.visualConcept}</p>
-                      </div>
+                      <Button variant="secondary" className="w-full justify-between group h-10 border-slate-700 bg-slate-800 hover:bg-slate-700" onClick={() => onNavigate('studio')}>
+                          <span className="flex items-center gap-2"><span className="text-lg">🎨</span> Open in Creative Studio</span>
+                          <span className="text-slate-500 group-hover:text-white transition-colors">→</span>
+                      </Button>
+                      <Button variant="secondary" className="w-full justify-between group h-10 border-slate-700 bg-slate-800 hover:bg-slate-700" onClick={() => onNavigate('schedule')}>
+                          <span className="flex items-center gap-2"><span className="text-lg">📅</span> Schedule Launch</span>
+                          <span className="text-slate-500 group-hover:text-white transition-colors">→</span>
+                      </Button>
                   </div>
               </Card>
 
-              {campaign.competitorAnalysis && (
-                  <Card title="Competitor Intelligence">
-                      <div className="space-y-2">
-                           <div className="p-2 border border-red-900/40 bg-red-900/10 rounded">
-                               <h4 className="text-[10px] text-red-400 font-bold uppercase mb-1">Identified Weakness</h4>
-                               <ul className="list-disc pl-3 text-xs text-slate-400">
-                                   {campaign.competitorAnalysis.weaknesses.map((w,i) => <li key={i}>{w}</li>)}
-                               </ul>
-                           </div>
-                           <div className="p-2 border border-green-900/40 bg-green-900/10 rounded">
-                               <h4 className="text-[10px] text-green-400 font-bold uppercase mb-1">Winning Angle</h4>
-                               <p className="text-xs text-slate-300">{campaign.competitorAnalysis.opportunityAngle}</p>
-                           </div>
-                      </div>
-                  </Card>
-              )}
           </div>
+
       </div>
     </div>
   );

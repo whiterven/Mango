@@ -14,6 +14,8 @@ export const Dashboard: React.FC<{ onNavigate: (view: string) => void }> = ({ on
   const { campaigns, isLoading } = useCampaignStore();
   const [credits, setCredits] = useState<{total: number, used: number} | null>(null);
   
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'Marketer';
+
   const recentCampaigns = campaigns.slice(0, 5);
   const totalAssets = campaigns.reduce((acc, c) => acc + (c.images?.length || 0), 0);
   
@@ -43,6 +45,12 @@ export const Dashboard: React.FC<{ onNavigate: (view: string) => void }> = ({ on
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       
+      {/* Greeting */}
+      <div>
+        <h2 className="text-2xl font-bold text-white">Hello, {firstName} 👋</h2>
+        <p className="text-slate-500 text-sm">Here is what's happening with your creatives today.</p>
+      </div>
+
       {/* 1. Command Center Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-brand-900/20 to-slate-900 border-brand-500/20 relative overflow-hidden group">
